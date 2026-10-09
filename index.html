@@ -1,0 +1,400 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Addness Live 24/7</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@200;300;400;500;600&family=Noto+Sans+JP:wght@300;400;500;700&family=Zen+Kaku+Gothic+New:wght@500;700&display=swap" rel="stylesheet">
+<style>html,body{margin:0;background:#000}</style>
+</head>
+<body>
+<!-- ▼ 入口ページの本体（GitHub Pages では deploy.sh がこのファイルを index.html として公開する） ▼ -->
+<div id="adl-gl">
+<style>
+#adl-gl{cursor:grab;touch-action:pan-y;user-select:none;-webkit-user-select:none;position:relative;overflow:hidden;height:100vh;height:100svh;min-height:560px;background:#000;color:#fff;
+  font-family:Inter,"Noto Sans JP","Hiragino Sans",system-ui,sans-serif;-webkit-font-smoothing:antialiased}
+#adl-gl *{box-sizing:border-box}
+#adl-gl.adl-drag{cursor:grabbing}
+#adl-gl canvas.adl-c,#adl-gl canvas.adl-sky{position:absolute;inset:0;width:100%;height:100%;display:block}
+#adl-gl .adl-ui{position:absolute;inset:0;pointer-events:none;display:flex;flex-direction:column;align-items:center}
+#adl-gl .adl-bar{width:100%;max-width:1200px;padding:22px 24px 0;display:flex;justify-content:space-between;align-items:center;opacity:0;animation:adl-in 1.2s .2s forwards}
+#adl-gl .adl-word{font-weight:600;font-size:16px;letter-spacing:-.01em}
+#adl-gl .adl-word span{font-weight:400;opacity:.6;margin-left:6px}
+#adl-gl .adl-onair{display:inline-flex;align-items:center;gap:8px;font-size:11px;font-weight:600;letter-spacing:.18em}
+#adl-gl .adl-dot{width:7px;height:7px;border-radius:50%;background:#ff3b30;box-shadow:0 0 0 0 rgba(255,59,48,.6);animation:adl-pulse 1.6s infinite}
+@keyframes adl-pulse{70%{box-shadow:0 0 0 9px rgba(255,59,48,0)}100%{box-shadow:0 0 0 0 rgba(255,59,48,0)}}
+#adl-gl .adl-hero{margin-top:clamp(28px,7vh,96px);padding:0 20px;text-align:center}
+#adl-gl .adl-eyebrow{font-size:11px;letter-spacing:.42em;font-weight:500;opacity:0;animation:adl-in 1.4s .5s forwards;color:rgba(255,255,255,.62)}
+#adl-gl h1{margin:10px 0 0;font-weight:500;font-size:clamp(26px,4.6vw,54px);letter-spacing:-.01em;line-height:1.1;word-break:keep-all;
+  opacity:0;animation:adl-in 1.6s .8s forwards;text-shadow:0 2px 40px rgba(0,0,0,.6)}
+#adl-gl h1 .adl-24{display:block;position:relative;width:max-content;margin:0 auto;font-family:Inter,sans-serif;font-weight:200;font-size:2.6em;line-height:.86;letter-spacing:-.06em;
+  background:linear-gradient(180deg,#fff 18%,#c9d2e6 62%,#7f8aa6);-webkit-background-clip:text;background-clip:text;color:transparent;padding-right:.06em}
+#adl-gl h1 .adl-24 small{font-size:.34em;font-weight:300;letter-spacing:0;margin-left:.06em;vertical-align:.02em}
+#adl-gl h1 .adl-24 i{position:absolute;right:-.04em;top:.2em;width:.07em;height:.07em;min-width:7px;min-height:7px;border-radius:50%;background:#ff3b30;box-shadow:0 0 0 0 rgba(255,59,48,.6);animation:adl-pulse 1.6s infinite}
+#adl-gl h1 .adl-main{display:block;margin-top:.32em;font-family:"Zen Kaku Gothic New","Noto Sans JP",sans-serif;font-weight:700;letter-spacing:.12em;padding-left:.12em}
+#adl-gl h1 .adl-main:lang(en),#adl-gl h1[lang=en] .adl-main{font-family:Inter,sans-serif;font-weight:500;letter-spacing:-.01em;padding-left:0}
+/* サブコピーは1文で1行。狭い画面では文節（.adl-ph）の切れ目でだけ折り返す */
+#adl-gl .adl-lead .adl-ln{display:block}
+#adl-gl .adl-lead .adl-ph{display:inline-block}
+#adl-gl .adl-lead{margin:16px auto 0;max-width:640px;font-size:clamp(13px,1.4vw,16px);font-weight:300;line-height:1.8;color:rgba(255,255,255,.72);
+  opacity:0;animation:adl-in 1.6s 1.1s forwards}
+#adl-gl .adl-langs{margin-top:clamp(22px,4vh,40px);display:flex;gap:10px;justify-content:center;flex-wrap:wrap;pointer-events:auto;opacity:0;animation:adl-in 1.4s 1.5s forwards}
+#adl-gl a.adl-lang{display:inline-flex;align-items:center;gap:10px;padding:12px 20px 12px 16px;border-radius:999px;text-decoration:none;color:#fff;
+  font-size:14px;font-weight:500;letter-spacing:.02em;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.28);
+  backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);transition:background .2s,border-color .2s,transform .2s}
+#adl-gl a.adl-lang:hover,#adl-gl a.adl-lang:focus-visible{background:rgba(255,255,255,.18);border-color:#fff;transform:translateY(-2px);outline:none}
+#adl-gl a.adl-lang i{font-style:normal;font-size:10px;letter-spacing:.16em;opacity:.6}
+#adl-gl a.adl-lang b{font-weight:400;opacity:.7;transition:transform .2s}
+#adl-gl a.adl-lang:hover b{transform:translateX(3px)}
+#adl-gl .adl-tag{position:absolute;left:0;top:0;pointer-events:auto;cursor:pointer;white-space:nowrap;display:flex;flex-direction:column;align-items:center;gap:6px;
+  transition:opacity .4s;will-change:transform}
+#adl-gl .adl-tag span{display:inline-flex;align-items:center;gap:7px;padding:5px 12px 5px 10px;border-radius:999px;font-size:12.5px;font-weight:500;
+  background:rgba(0,0,0,.45);border:1px solid rgba(255,255,255,.35);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px)}
+#adl-gl .adl-tag span:before{content:"";width:6px;height:6px;border-radius:50%;background:#ff3b30;box-shadow:0 0 8px #ff3b30}
+#adl-gl .adl-tag:after{content:"";width:1px;height:22px;background:linear-gradient(rgba(255,255,255,.6),rgba(255,255,255,0))}
+#adl-gl .adl-tag.adl-on span{background:#fff;color:#000;border-color:#fff}
+#adl-gl .adl-go{position:absolute;left:50%;bottom:clamp(28px,7vh,60px);transform:translateX(-50%);font-size:13px;letter-spacing:.2em;font-weight:500;
+  color:#fff;opacity:0;transition:opacity .4s;text-align:center;white-space:nowrap}
+#adl-gl .adl-go.adl-show{opacity:1}
+#adl-gl .adl-go small{display:block;margin-top:6px;letter-spacing:.05em;font-weight:300;opacity:.6}
+#adl-gl .adl-fade{position:absolute;inset:0;background:#000;opacity:0;pointer-events:none;transition:opacity .6s}
+#adl-gl .adl-share{position:absolute;right:20px;bottom:16px;pointer-events:auto;background:none;border:0;color:rgba(255,255,255,.55);font:inherit;font-size:12px;cursor:pointer;
+  text-decoration:underline;text-underline-offset:4px}
+#adl-gl .adl-share:hover{color:#fff}
+@media (min-width:641px){
+  #adl-gl a.adl-lang{padding:15px 26px 15px 20px;font-size:15.5px;font-weight:600;gap:12px;background:rgba(255,255,255,.14);border-color:rgba(255,255,255,.55);
+    box-shadow:0 8px 30px rgba(0,0,0,.35),inset 0 1px 0 rgba(255,255,255,.18)}
+  #adl-gl a.adl-lang:hover,#adl-gl a.adl-lang:focus-visible{background:#fff;color:#000;border-color:#fff}
+  #adl-gl a.adl-lang i{opacity:.75}
+  #adl-gl .adl-langs{gap:14px}
+}
+@keyframes adl-in{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
+@media (max-width:640px){#adl-gl .adl-eyebrow{letter-spacing:.24em;font-size:10px}#adl-gl .adl-share{left:50%;right:auto;transform:translateX(-50%)}}
+@media (prefers-reduced-motion:reduce){#adl-gl *{animation-duration:.01s!important;animation-delay:0s!important}}
+</style>
+
+<canvas class="adl-sky" aria-hidden="true"></canvas>
+<canvas class="adl-c" aria-hidden="true"></canvas>
+<div class="adl-ui">
+  <div class="adl-bar"><div class="adl-word">Addness<span>Live</span></div><div class="adl-onair"><span class="adl-dot"></span>LIVE 24/7</div></div>
+  <div class="adl-hero">
+    <div class="adl-eyebrow">FROM TOKYO, TO THE WORLD</div>
+    <h1 id="adl-title"></h1>
+    <p class="adl-lead" id="adl-lead"></p>
+    <div class="adl-langs" id="adl-langs"></div>
+  </div>
+</div>
+<div id="adl-tags"></div>
+<div class="adl-go" id="adl-go"></div>
+<div class="adl-fade" id="adl-fade"></div>
+<button class="adl-share" id="adl-share" type="button"></button>
+
+<script type="module">
+/* ===== 言語の一覧：言語を増やす時はここに1行足す（published:false は出ない。?preview=all で全部出る）
+   countries：光らせる国（ISOの数字コード）　tag：地球に札を立てる場所　view：選んだ時に地球を向ける場所 [経度,緯度] ===== */
+const LANGS = [
+  {code:"ja", name:"日本語", published:true, tag:[138.5,37.5], view:[140,30], countries:["392"],
+   url:"https://www.youtube.com/watch?v=wAm8r9XCLQA",
+   title:"<span class='adl-24'>24<small>h</small><i></i></span><span class='adl-main'>アドれば、できる。</span>",
+   lead:[["Addnessの使い方に、","人が24時間ライブで答えます。"],["思い立ったその瞬間に、","次の一歩まで一緒に。"]],
+   going:"日本語のライブへ", skip:"もう一度押すとすぐ開きます", share:"このページを送る", copied:"リンクをコピーしました"},
+  {code:"en", name:"English", published:false, tag:[-98,40], view:[-62,36],
+   countries:["840","826","124","036","554","372","566","710","404","288","356","608"],
+   url:"https://www.youtube.com/watch?v=-2AlQNuuPgY",
+   title:"<span class='adl-24'>24<small>h</small><i></i></span><span class='adl-main'>Addness it. Get it done.</span>",
+   lead:[["Real people answer how to use Addness,","live, 24 hours a day."],["The moment you're ready,","we'll help you take the next step."]],
+   going:"TO THE ENGLISH LIVE", skip:"Tap again to open now", share:"Share this page", copied:"Link copied"}
+];
+const TOKYO=[139.69,35.69], HOME_VIEW=[128,30];
+const TEX="https://cdn.jsdelivr.net/gh/mrdoob/three.js@r160/examples/textures/planets/";
+// 自前で置く画像（NASA）。ページと同じ場所の assets/ から読む：10月の地球（雪の季節に合わせる）・全天の星空
+const EARTH_IMG="assets/earth-oct-4096.jpg", SKY_IMG="assets/sky-milkyway.jpg";
+
+const root=document.getElementById("adl-gl"), $=s=>root.querySelector(s);
+const preview=/[?&]preview=all\b/.test(location.search);
+const shown=LANGS.filter(l=>l.published||preview);
+const nav=(navigator.language||"ja").slice(0,2).toLowerCase();
+const order=shown.slice().sort((a,b)=>(b.code===nav)-(a.code===nav));
+
+/* ---------- 文字 ---------- */
+const ti=$("#adl-title"), ld=$("#adl-lead"), sh=$("#adl-share");
+let cur=0;
+function copy(){const l=order[cur%order.length]; ti.innerHTML=l.title; ld.innerHTML=l.lead.map(line=>'<span class="adl-ln">'+line.map(ph=>'<span class="adl-ph">'+ph+'</span>').join(l.code==="ja"?"":" ")+'</span>').join(""); sh.textContent="↗ "+l.share; ti.lang=ld.lang=l.code;}
+copy();
+// 見出しは見る人の言語で固定（切り替えると高さが変わってボタンが動くため）
+sh.addEventListener("click",()=>{const l=order[cur%order.length], u=location.href.replace(/[?&]preview=all\b/,"");
+  if(navigator.share){navigator.share({title:"Addness Live 24/7",url:u}).catch(()=>{});return;}
+  navigator.clipboard&&navigator.clipboard.writeText(u).then(()=>{sh.textContent="✓ "+l.copied;setTimeout(copy,1800);});});
+
+/* ---------- ボタンと札 ---------- */
+let flying=null;
+var setView=()=>{}, setMask=()=>{}, flyStart=0;
+const box=$("#adl-langs"), tagBox=$("#adl-tags"), goEl=$("#adl-go"), fade=$("#adl-fade");
+function choose(l,e){
+  if(e&&(e.metaKey||e.ctrlKey||e.shiftKey||e.button===1)) return;   // 新しいタブで開く時はそのまま
+  if(e) e.preventDefault();
+  if(flying===l){ location.href=l.url; return; }                    // 2回目はすぐ開く
+  flying=l; flyStart=performance.now(); setView(l.view,1.0);
+  goEl.innerHTML=l.going+"<small>"+l.skip+"</small>"; goEl.classList.add("adl-show");
+  shown.forEach(x=>x._tag.classList.toggle("adl-on",x===l)); setMask(l);
+  clearTimeout(choose._t); choose._t=setTimeout(()=>{fade.style.opacity=1; setTimeout(()=>{location.href=l.url;},550);},2600);
+}
+shown.forEach(l=>{
+  const a=document.createElement("a"); a.className="adl-lang"; a.href=l.url; a.lang=l.code;
+  a.innerHTML="<i>"+l.code.toUpperCase()+"</i>"+l.name+"<b>→</b>";
+  a.addEventListener("click",e=>choose(l,e));
+  a.addEventListener("mouseenter",()=>{ if(!flying) setMask(l); });
+  a.addEventListener("mouseleave",()=>{ if(!flying) setMask(null); });
+  box.appendChild(a);
+  const t=document.createElement("div"); t.className="adl-tag"; t.innerHTML="<span>"+l.name+"</span>"; t.style.opacity=0;
+  t.addEventListener("click",e=>choose(l,e)); tagBox.appendChild(t); l._tag=t;
+});
+// 戻るボタンで戻ってきた時に暗いままにしない
+window.addEventListener("pageshow",()=>{fade.style.opacity=0; flying=null; goEl.classList.remove("adl-show"); shown.forEach(x=>x._tag.classList.remove("adl-on")); setView(HOME_VIEW,0); setMask(null);});
+
+/* ---------- 地球 ---------- */
+const THREE = await import("https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.min.js").catch(()=>null);
+const cv=$("canvas.adl-c");
+let renderer=null; try{ renderer=THREE&&new THREE.WebGLRenderer({canvas:cv,antialias:true,alpha:true}); renderer&&renderer.setClearColor(0x000000,0); }catch(e){}
+
+/* ---------- 宇宙（星・天の川・流れ星）：地球の後ろの2Dキャンバス ---------- */
+const sky=$("canvas.adl-sky"), sx=sky.getContext("2d"), skyBase=document.createElement("canvas");
+let SW=0,SH=0,SD=1,bright=[],meteors=[],nextMeteor=performance.now()+2500;
+let seed=7; const rnd=()=>{seed|=0;seed=seed+0x6D2B79F5|0;let t=Math.imul(seed^seed>>>15,1|seed);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296;};
+function gauss(){let u=0,v=0;while(!u)u=rnd();while(!v)v=rnd();return Math.sqrt(-2*Math.log(u))*Math.cos(2*Math.PI*v);}
+function buildSky(){
+  if(Math.abs(root.clientWidth-SW)<2&&Math.abs(root.clientHeight-SH)<2) return; seed=7;
+  SW=root.clientWidth; SH=root.clientHeight; SD=Math.min(devicePixelRatio||1,2);
+  for(const c of [sky,skyBase]){ c.width=SW*SD; c.height=SH*SD; }
+  const g=skyBase.getContext("2d"); g.setTransform(SD,0,0,SD,0,0); g.fillStyle="#000"; g.fillRect(0,0,SW,SH);
+  // 天の川：左下から右上への帯。淡い雲と、帯に集まる細かい星
+  const ax=-0.1*SW, ay=0.95*SH, bx=1.1*SW, by=0.05*SH, len=Math.hypot(bx-ax,by-ay), ux=(bx-ax)/len, uy=(by-ay)/len, nx=-uy, ny=ux, bw=Math.min(SW,SH)*0.16;
+  for(let i=0;i<70;i++){ const t=rnd(), o=gauss()*bw*0.6, x=ax+ux*len*t+nx*o, y=ay+uy*len*t+ny*o, r=bw*(0.6+rnd()*1.4);
+    const gr=g.createRadialGradient(x,y,0,x,y,r); gr.addColorStop(0,"rgba(140,155,200,.03)"); gr.addColorStop(1,"rgba(140,155,200,0)");
+    g.fillStyle=gr; g.fillRect(x-r,y-r,r*2,r*2); }
+  const dust=Math.round(SW*SH/110);
+  for(let i=0;i<dust;i++){ const t=rnd(), o=gauss()*bw*0.45, x=ax+ux*len*t+nx*o, y=ay+uy*len*t+ny*o;
+    g.fillStyle="rgba(225,230,245,"+(rnd()*.22+.04)+")"; g.fillRect(x,y,.6,.6); }
+  // 全体の星：小さく、色はごく控えめ
+  const n=Math.round(SW*SH/1600);
+  for(let i=0;i<n;i++){ const x=rnd()*SW, y=rnd()*SH, m=Math.pow(rnd(),4), c=rnd();
+    g.fillStyle=(c<.12?"rgba(255,236,215,":c<.3?"rgba(215,228,255,":"rgba(255,255,255,")+(.18+m*.7)+")";
+    g.beginPath(); g.arc(x,y,.3+m*.75,0,6.283); g.fill(); }
+  // ゆっくり瞬く星（光の輪や十字は付けない）
+  bright=[]; for(let i=0;i<Math.round(SW*SH/30000)+8;i++) bright.push({x:rnd()*SW,y:rnd()*SH*.8,r:.6+rnd()*.5,p:rnd()*6.28,s:.25+rnd()*.5});
+}
+function drawSky(now){
+  sx.setTransform(1,0,0,1,0,0); sx.drawImage(skyBase,0,0); sx.setTransform(SD,0,0,SD,0,0);
+  for(const b of bright){ const a=.35+.45*(.5+.5*Math.sin(now/1000*b.s+b.p)); sx.fillStyle="rgba(255,255,255,"+a+")"; sx.beginPath(); sx.arc(b.x,b.y,b.r,0,6.283); sx.fill(); }
+  // 流れ星：10秒前後に1本、右上から左下へ
+  if(now>nextMeteor){ const ang=(200+Math.random()*25)*Math.PI/180; meteors.push({x:SW*(.3+Math.random()*.8),y:SH*Math.random()*.4,dx:Math.cos(ang),dy:-Math.sin(ang),
+      v:(.9+Math.random()*.6)*Math.max(SW,SH)/1.1,len:70+Math.random()*110,t0:now,life:600+Math.random()*400}); nextMeteor=now+7000+Math.random()*9000; }
+  meteors=meteors.filter(m=>{ const t=(now-m.t0)/m.life; if(t>1) return false; const d=m.v*(now-m.t0)/1000, hx=m.x+m.dx*d, hy=m.y+m.dy*d;
+    const a=Math.sin(Math.PI*t), tx=hx-m.dx*m.len, ty=hy-m.dy*m.len, gr=sx.createLinearGradient(hx,hy,tx,ty);
+    gr.addColorStop(0,"rgba(255,255,255,"+a*.8+")"); gr.addColorStop(1,"rgba(200,215,255,0)"); sx.strokeStyle=gr; sx.lineWidth=.9; sx.lineCap="round";
+    sx.beginPath(); sx.moveTo(hx,hy); sx.lineTo(tx,ty); sx.stroke(); return true; });
+}
+// 星空：NASAの全天の星空の写真から、天の川の中心あたりを切り出したもの。画面いっぱいに敷き、動かさない
+const skyImg=new Image(); let skyW=0,skyH=0;
+function paintSky(){ const w=root.clientWidth,h=root.clientHeight; if(!skyImg.naturalWidth||(w===skyW&&h===skyH)) return; skyW=w; skyH=h;
+  const d=Math.min(devicePixelRatio||1,2); sky.width=w*d; sky.height=h*d; const g=sky.getContext("2d"); g.setTransform(d,0,0,d,0,0);
+  const sc=Math.max(w/skyImg.naturalWidth,h/skyImg.naturalHeight), iw=skyImg.naturalWidth*sc, ih=skyImg.naturalHeight*sc;
+  g.fillStyle="#000"; g.fillRect(0,0,w,h); g.drawImage(skyImg,(w-iw)/2,(h-ih)*.35,iw,ih);
+  // 見出しの後ろは少し暗くして、文字を読みやすく
+  const gr=g.createRadialGradient(w/2,h*.2,0,w/2,h*.2,Math.max(w,h)*.55); gr.addColorStop(0,"rgba(0,0,0,.55)"); gr.addColorStop(1,"rgba(0,0,0,.15)");
+  g.fillStyle=gr; g.fillRect(0,0,w,h); }
+if(renderer){ skyImg.onload=paintSky; skyImg.src=SKY_IMG; window.addEventListener("resize",paintSky); }
+// 3Dが使えない端末だけ、2Dで星を描く
+if(!renderer){ buildSky(); window.addEventListener("resize",buildSky); (function loop(t){ drawSky(t); requestAnimationFrame(loop); })(0); }
+if(renderer){
+  const D2R=Math.PI/180;
+  const ll2v=(lon,lat,r=1)=>new THREE.Vector3(Math.cos(lat*D2R)*Math.cos(lon*D2R)*r, Math.sin(lat*D2R)*r, -Math.cos(lat*D2R)*Math.sin(lon*D2R)*r);
+  renderer.setPixelRatio(Math.min(devicePixelRatio||1,2));
+  const scene=new THREE.Scene(), camera=new THREE.PerspectiveCamera(30,1,0.1,100);
+  const tilt=new THREE.Group(), earth=new THREE.Group(); tilt.add(earth); scene.add(tilt);
+
+  // 地表：写真の地球（昼）と街の灯り（夜）。境目は今の太陽の位置。色は足さず、写真の色のまま露出だけ整える
+  const loader=new THREE.TextureLoader(); loader.setCrossOrigin("anonymous");
+  const tex=(n,srgb)=>{const t=loader.load(/^(https?:|assets\/)/.test(n)?n:TEX+n); if(srgb) t.colorSpace=THREE.SRGBColorSpace; t.anisotropy=renderer.capabilities.getMaxAnisotropy(); return t;};
+  const maskCanvas=document.createElement("canvas"); maskCanvas.width=2048; maskCanvas.height=1024;
+  const maskTex=new THREE.CanvasTexture(maskCanvas);
+  const U={day:{value:tex(EARTH_IMG,1)},night:{value:tex("earth_lights_2048.png",1)},nrm:{value:tex("earth_normal_2048.jpg")},spec:{value:tex("earth_specular_2048.jpg")},
+    mask:{value:maskTex},maskAmt:{value:0},sunL:{value:new THREE.Vector3(1,0,0)},t:{value:0}};
+  const FILMIC="vec3 film(vec3 x){x*=1.15;return clamp((x*(2.51*x+.03))/(x*(2.43*x+.59)+.14),0.,1.);}";
+  const mat=new THREE.ShaderMaterial({uniforms:U,
+    vertexShader:`varying vec2 vUv;varying vec3 nL;varying vec3 nV;varying vec3 pV;varying vec3 sV;uniform vec3 sunL;
+      void main(){vUv=uv;nL=normal;nV=normalize(normalMatrix*normal);vec4 mv=modelViewMatrix*vec4(position,1.);pV=mv.xyz;sV=normalize((modelViewMatrix*vec4(sunL,0.)).xyz);gl_Position=projectionMatrix*mv;}`,
+    fragmentShader:`uniform sampler2D day,night,nrm,spec,mask;uniform vec3 sunL;uniform float maskAmt,t;varying vec2 vUv;varying vec3 nL;varying vec3 nV;varying vec3 pV;varying vec3 sV;
+      ${FILMIC}
+      void main(){
+        vec3 n0=normalize(nL), sn=normalize(sunL); float d=dot(n0,sn); float dm=smoothstep(-.1,.18,d);
+        // 起伏：法線マップで山や谷に陰影
+        vec3 east=normalize(cross(vec3(0.,1.,0.),n0)+vec3(1e-4)), north=cross(n0,east);
+        vec3 nm=texture2D(nrm,vUv).xyz*2.-1.; float w=texture2D(spec,vUv).r; vec3 nb=normalize(mix(east*nm.x*.9+north*nm.y*.9+n0*nm.z,n0,w)); float db=dot(nb,sn);
+        vec3 dayC=texture2D(day,vUv).rgb; vec3 ngt=texture2D(night,vUv).rgb;
+        vec3 c=dayC*(.02+1.25*max(db,0.));
+        vec3 V=normalize(-pV), Nv=normalize(nV);
+        // 夜：街の灯り
+        c=mix(ngt*vec3(1.,.82,.55)*1.6+dayC*.01, c, dm);
+        // 選んだ言語の国をうっすら
+        float m=texture2D(mask,vUv).r; c+=vec3(.6,.8,1.)*m*maskAmt*(.06+.18*(1.-dm))*(.85+.15*sin(t*2.));
+        // ふちの大気
+        float rim=pow(1.-max(dot(Nv,V),0.),3.); c+=vec3(.3,.55,1.)*rim*(.12+.35*max(d,0.));
+        gl_FragColor=vec4(pow(film(c),vec3(1./2.2)),1.);}`});
+  earth.add(new THREE.Mesh(new THREE.SphereGeometry(1,128,128),mat));
+
+  // 流れ星：地球より奥の面を、たまに1本だけ
+  const meteors3=[]; let nextMeteor3=performance.now()+4000;
+  function spawnMeteor(now){
+    const zW=-25, visH=2*Math.tan(camera.fov*D2R/2)*(camera.position.z-zW), visW=visH*camera.aspect;
+    const x=(Math.random()*.9-.35)*visW, y=(.12+Math.random()*.3)*visH, ang=(200+Math.random()*20)*D2R, len=visH*(.08+Math.random()*.07);
+    const geo=new THREE.BufferGeometry(); geo.setAttribute("position",new THREE.Float32BufferAttribute([0,0,0,0,0,0],3));
+    geo.setAttribute("color",new THREE.Float32BufferAttribute([1,1,1,1, .75,.82,1,0],4));
+    const line=new THREE.Line(geo,new THREE.LineBasicMaterial({vertexColors:true,transparent:true,depthWrite:false}));
+    scene.add(line); meteors3.push({line,geo,x,y,z:zW,dx:Math.cos(ang),dy:Math.sin(ang),len,v:visH*.9,t0:now,life:650+Math.random()*350});
+  }
+  function stepMeteors(now){
+    if(now>nextMeteor3){ spawnMeteor(now); nextMeteor3=now+8000+Math.random()*10000; }
+    for(let i=meteors3.length-1;i>=0;i--){ const m=meteors3[i], t=(now-m.t0)/m.life;
+      if(t>1){ scene.remove(m.line); m.geo.dispose(); meteors3.splice(i,1); continue; }
+      const d=m.v*(now-m.t0)/1000, hx=m.x+m.dx*d, hy=m.y+m.dy*d, a=Math.sin(Math.PI*t);
+      m.geo.attributes.position.array.set([hx,hy,m.z, hx-m.dx*m.len,hy-m.dy*m.len,m.z]); m.geo.attributes.position.needsUpdate=true;
+      m.line.material.opacity=a*.8; }
+  }
+
+  // 雲：地表より少し上の殻。太陽の当たる側だけ白く、ゆっくり流れる
+  const cloudMat=new THREE.ShaderMaterial({transparent:true,depthWrite:false,uniforms:{clouds:{value:tex("earth_clouds_1024.png")},sunL:U.sunL},
+    vertexShader:"varying vec2 vUv;varying vec3 nL;void main(){vUv=uv;nL=normal;gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.);}",
+    fragmentShader:"uniform sampler2D clouds;uniform vec3 sunL;varying vec2 vUv;varying vec3 nL;void main(){float d=dot(normalize(nL),normalize(sunL));float a=texture2D(clouds,vUv).a;float lit=smoothstep(-.15,.35,d);gl_FragColor=vec4(vec3(.96)*(.05+.95*lit),a*(.15+.8*lit));}"});
+  const cloudMesh=new THREE.Mesh(new THREE.SphereGeometry(1.006,128,128),cloudMat); earth.add(cloudMesh);
+
+  // 大気の光
+  const atm=new THREE.Mesh(new THREE.SphereGeometry(1.035,96,96),new THREE.ShaderMaterial({side:THREE.BackSide,transparent:true,depthWrite:false,blending:THREE.AdditiveBlending,
+    vertexShader:"varying vec3 n;void main(){n=normalize(normalMatrix*normal);gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.);}",
+    fragmentShader:"varying vec3 n;void main(){float i=pow(clamp(.62-dot(n,vec3(0.,0.,1.)),0.,1.),3.2);gl_FragColor=vec4(.38,.62,1.,1.)*i*1.1;}"}));
+  tilt.add(atm);
+
+  // 東京スタジオの灯
+  const glow=(c,s,noDepth)=>{const cc=document.createElement("canvas");cc.width=cc.height=64;const g=cc.getContext("2d");const gr=g.createRadialGradient(32,32,0,32,32,32);
+    gr.addColorStop(0,c);gr.addColorStop(.25,c);gr.addColorStop(1,"rgba(0,0,0,0)");g.fillStyle=gr;g.fillRect(0,0,64,64);
+    const sp=new THREE.Sprite(new THREE.SpriteMaterial({map:new THREE.CanvasTexture(cc),transparent:true,depthWrite:false,depthTest:!noDepth,blending:THREE.AdditiveBlending}));sp.scale.set(s,s,1);return sp;};
+  const tokyoV=ll2v(TOKYO[0],TOKYO[1],1.004);
+  const beacon=glow("rgba(255,70,60,1)",.05,true); beacon.position.copy(tokyoV); earth.add(beacon);
+  const ring=glow("rgba(255,70,60,.6)",.12,true); ring.position.copy(tokyoV); earth.add(ring);
+
+  // 言語の国の形（光らせる所）と、光が届く先の点
+  let topo=null, targets={};
+  import("https://cdn.jsdelivr.net/npm/topojson-client@3.1.0/+esm").then(tj=>fetch("https://cdn.jsdelivr.net/npm/world-atlas@2.0.2/countries-110m.json").then(r=>r.json()).then(j=>{
+    const feats=tj.feature(j,j.objects.countries).features;
+    shown.forEach(l=>{ l._feats=feats.filter(f=>(l.countries||[]).includes(String(f.id))); });
+    topo=true; shown.forEach(l=>{ targets[l.code]=sampleTargets(l); });
+  })).catch(()=>{});
+  function drawFeats(g,feats,W,H,strokeOnly){
+    feats.forEach(f=>{ const polys=f.geometry.type==="Polygon"?[f.geometry.coordinates]:f.geometry.coordinates;
+      polys.forEach(p=>p.forEach(ring=>{ g.beginPath(); let px=null;
+        ring.forEach(([lo,la],i)=>{ const x=(lo+180)/360*W, y=(90-la)/180*H; if(i===0||Math.abs(x-px)>W/2) g.moveTo(x,y); else g.lineTo(x,y); px=x; });
+        g.closePath(); if(!strokeOnly) g.fill(); g.stroke(); })); });
+  }
+  function setMaskTo(l){ const g=maskCanvas.getContext("2d"); g.clearRect(0,0,2048,1024);
+    if(l&&l._feats){ g.fillStyle="rgba(255,255,255,.07)"; g.strokeStyle="#fff"; g.lineWidth=1.8; drawFeats(g,l._feats,2048,1024); }
+    maskTex.needsUpdate=true; }
+  function sampleTargets(l){ if(!l._feats||!l._feats.length) return [];
+    const c=document.createElement("canvas"); c.width=720; c.height=360; const g=c.getContext("2d"); g.fillStyle="#fff"; g.strokeStyle="#fff"; drawFeats(g,l._feats,720,360);
+    const d=g.getImageData(0,0,720,360).data, pts=[]; for(let k=0;k<4000&&pts.length<40;k++){ const x=Math.random()*720|0, y=Math.random()*360|0; if(d[(y*720+x)*4+3]>200) pts.push([x/720*360-180,90-y/360*180]); } return pts; }
+  let maskWant=0, maskLang=null;
+  setMask=l=>{ if(l){ if(l!==maskLang){ setMaskTo(l); maskLang=l; } maskWant=1; } else maskWant=0; };
+
+  // 東京から伸びる光の弧
+  const arcs=[];
+  function addArc(to,strong){
+    const a=tokyoV.clone().normalize(), b=ll2v(to[0],to[1]).normalize(), ang=a.angleTo(b); if(ang<.03) return;
+    const N=80, pos=new Float32Array((N+1)*3);
+    for(let i=0;i<=N;i++){ const t=i/N; const v=a.clone().multiplyScalar(Math.sin((1-t)*ang)/Math.sin(ang)).add(b.clone().multiplyScalar(Math.sin(t*ang)/Math.sin(ang)));
+      v.normalize().multiplyScalar(1.003+Math.sin(Math.PI*t)*(.04+ang*.06)); pos.set([v.x,v.y,v.z],i*3); }
+    const geo=new THREE.BufferGeometry(); geo.setAttribute("position",new THREE.BufferAttribute(pos,3)); geo.setDrawRange(0,0);
+    const line=new THREE.Line(geo,new THREE.LineBasicMaterial({color:strong?0xffffff:0xbfd8ff,transparent:true,opacity:strong?.95:.55,blending:THREE.AdditiveBlending,depthWrite:false}));
+    const head=glow("rgba(255,255,255,1)",strong?.022:.03); earth.add(line); earth.add(head);
+    arcs.push({line,head,geo,pos,N,t0:performance.now()+(strong?450:0),dur:strong?1900:2200+ang*500,end:ll2v(to[0],to[1],1.003),strong});
+  }
+
+  // 向き：rot = 経度の回転、tiltX = 緯度の倒し
+  let rot=0, tiltX=0, wantRot=0, wantTilt=0, ease=0.035;
+  let VIEW_LAT=44, curView=HOME_VIEW, lastSpeed=0;
+  setView=(v,speed)=>{ curView=v; lastSpeed=speed; wantRot=(-90-v[0])*D2R; wantTilt=(v[1]-VIEW_LAT)*D2R; ease=speed?0.06:0.035;
+    if(speed===0){ rot=wantRot; tiltX=wantTilt; } };
+  setView(HOME_VIEW,0);
+
+  // つかんで回す：指の下の地面が指についてくる速さ。縦は少しだけ傾く。離すと惰性で回り、止まった所にとどまる
+  let drag=null, spin=0, lastUser=-1e9;
+  root.addEventListener("pointerdown",e=>{ if(flying||e.button>0||e.target.closest("a,button,.adl-tag")) return;
+    drag={x:e.clientX,y:e.clientY,t:performance.now()}; spin=0; root.classList.add("adl-drag"); try{root.setPointerCapture(e.pointerId);}catch(_){} });
+  root.addEventListener("pointermove",e=>{ if(!drag) return; const now=performance.now(), k=1/(root.clientWidth*.62), dx=e.clientX-drag.x, dy=e.clientY-drag.y;
+    wantRot+=dx*k; wantTilt=Math.max(-.45,Math.min(.45,wantTilt-dy*k*.5)); spin=Math.max(-.003,Math.min(.003,dx*k/Math.max(16,now-drag.t)));
+    drag.x=e.clientX; drag.y=e.clientY; drag.t=now; lastUser=now; });
+  const release=()=>{ if(!drag) return; if(performance.now()-drag.t>80) spin=0; drag=null; root.classList.remove("adl-drag"); lastUser=performance.now(); };
+  root.addEventListener("pointerup",release); root.addEventListener("pointercancel",release);
+
+  function sun(){ const d=new Date(), doy=(d-Date.UTC(d.getUTCFullYear(),0,0))/864e5;
+    const dec=-23.44*Math.cos(2*Math.PI/365*(doy+10)), h=d.getUTCHours()+d.getUTCMinutes()/60+d.getUTCSeconds()/3600; return ll2v(-15*(h-12),dec); }
+
+  function resize(){ const w=root.clientWidth, h=root.clientHeight; lastW=w; lastH=h; renderer.setSize(w,h,false); camera.aspect=w/h; camera.fov=30;
+    // 地球は画面の下に大きな弧として出す。k＝地球の半径が画面の横幅の半分の何倍か、top＝地球のふちが画面の上から何割の所か
+    const portrait=camera.aspect<1, k=portrait?1.3:1.15, half=Math.tan(camera.fov*D2R/2);
+    const heroB=$(".adl-hero").getBoundingClientRect().bottom-root.getBoundingClientRect().top;
+    const top=Math.max(.32,Math.min(.78,(heroB+(portrait?36:Math.max(56,h*.09)))/h));
+    camera.position.set(0,0,1/(k*half*camera.aspect)+0.0); if(camera.position.z<2.2) camera.position.z=2.2;
+    // 見かけのふち（接線）が top の高さに来るよう、地球の中心の高さを二分探索で決める
+    const z=camera.position.z, want=Math.atan((.5-top)*2*half); let lo=-6, hi=0;
+    for(let i=0;i<40;i++){ const yc=(lo+hi)/2, ang=Math.asin(Math.min(1,1/Math.hypot(yc,z)))-Math.atan(-yc/z); if(ang>want) hi=yc; else lo=yc; }
+    tilt.position.y=(lo+hi)/2;
+    // 選んだ場所を、見えている弧の中ほど（真横から見すぎない所）に置く
+    const Rpx=k*w/2, depth=(1-top)*h; VIEW_LAT=Math.asin(Math.max(-.2,1-Math.min(depth*.5,Rpx*.8)/Rpx))/D2R; setView(curView,lastSpeed===0?0:1);
+    camera.updateProjectionMatrix(); }
+  let lastW=0,lastH=0; window.addEventListener("resize",()=>{ const w=root.clientWidth,h=root.clientHeight; if(Math.abs(w-lastW)<2&&Math.abs(h-lastH)<2) return; resize(); }); resize();
+  document.fonts&&document.fonts.ready.then(resize); setTimeout(resize,1800);
+
+  const tmp=new THREE.Vector3(), camDir=new THREE.Vector3();
+  let last=performance.now(), nextIdle=0, flyArc=null;
+  function frame(now){
+    const dt=Math.min(now-last,50); last=now;
+    // ゆっくり回す（選んでいない時は少しだけ揺らす）
+    if(!drag&&Math.abs(spin)>1e-6){ wantRot+=spin*dt; spin*=Math.pow(.94,dt/16); lastUser=now; }
+    // 触っていない時だけ、ゆっくり揺らす（触った後は8秒おいてから戻る）
+    const idleAmp=flying?0:Math.max(0,Math.min(1,(now-lastUser-8000)/4000)), idle=Math.sin(now/9000)*6*D2R*idleAmp;
+    const e2=(drag||Math.abs(spin)>1e-6)?.3:ease;
+    let dr=((wantRot+idle-rot)+Math.PI*3)%(Math.PI*2)-Math.PI; rot+=dr*Math.min(1,e2*dt/16); tiltX+=(wantTilt-tiltX)*Math.min(1,e2*dt/16);
+    earth.rotation.y=rot; tilt.rotation.x=tiltX; cloudMesh.rotation.y=now/1000*0.004;
+    U.sunL.value.copy(sun()); U.t.value=now/1000;
+    U.maskAmt.value+=(maskWant-U.maskAmt.value)*Math.min(1,dt/250);
+    // 東京の灯：裏に回った時だけ消す（地球に食い込んで半分切れないよう、奥行きでは隠さない）
+    tmp.copy(tokyoV); earth.localToWorld(tmp); camera.getWorldPosition(camDir);
+    const tf=tmp.clone().sub(tilt.getWorldPosition(new THREE.Vector3())).normalize().dot(camDir.clone().sub(tmp).normalize()), vis=Math.max(0,Math.min(1,(tf-.02)*8));
+    const pr=(now%1800)/1800; ring.scale.setScalar(.04+pr*.16); ring.material.opacity=(1-pr)*vis; beacon.material.opacity=vis;
+    // 光の弧：いつもは公開中の言語の国へ時々。選んだ時は、東京からその言語の場所へ1本だけ（選んだ時に足す）
+    if(flying&&flyArc!==flying){ flyArc=flying; if(!flying.countries.includes("392")) addArc(flying.tag,true); }
+    if(!flying) flyArc=null;
+    if(!flying&&now>nextIdle){ const pool=shown.filter(l=>!l.countries.includes("392")||shown.length===1);
+      const l=pool[Math.floor(Math.random()*pool.length)]; const tg=l&&targets[l.code];
+      if(tg&&tg.length) addArc(tg[Math.floor(Math.random()*tg.length)],false); nextIdle=now+900; }
+    for(let i=arcs.length-1;i>=0;i--){ const A=arcs[i], t=Math.max(0,(now-A.t0)/A.dur);
+      const head=Math.min(1,t), tail=Math.max(0,t-.55), s=Math.floor(tail*A.N), e=Math.ceil(head*A.N);
+      A.geo.setDrawRange(s,Math.max(0,e-s+1)); const hi=Math.min(A.N,e); A.head.position.set(A.pos[hi*3],A.pos[hi*3+1],A.pos[hi*3+2]);
+      A.line.material.opacity=(A.strong?.95:.55)*(t>1?Math.max(0,1-(t-1)/.5):1); A.head.material.opacity=t>1?0:1;
+      if(t>1.5){ earth.remove(A.line); earth.remove(A.head); A.geo.dispose(); arcs.splice(i,1); } }
+    stepMeteors(now); renderer.render(scene,camera);
+    // 札を地球の上に置く（裏側は隠す）
+    camera.getWorldPosition(camDir);
+    shown.forEach(l=>{ tmp.copy(ll2v(l.tag[0],l.tag[1],1.0)); earth.localToWorld(tmp);
+      const n=tmp.clone().sub(tilt.getWorldPosition(new THREE.Vector3())).normalize(), facing=n.dot(camDir.clone().sub(tmp).normalize());
+      tmp.project(camera); const x=(tmp.x+1)/2*root.clientWidth, y=(1-tmp.y)/2*root.clientHeight;
+      l._tag.style.transform="translate("+x+"px,"+y+"px) translate(-50%,-100%)"; l._tag.style.opacity=facing>.18?Math.min(1,(facing-.18)*4):0; });
+    requestAnimationFrame(frame);
+  }
+  requestAnimationFrame(frame);
+}
+</script>
+</div>
+<!-- ▲ ここまで ▲ -->
+</body>
+</html>
