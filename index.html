@@ -32,7 +32,12 @@
   background:linear-gradient(180deg,#fff 18%,#c9d2e6 62%,#7f8aa6);-webkit-background-clip:text;background-clip:text;color:transparent;padding-right:.06em}
 #adl-gl h1 .adl-24 small{font-size:.34em;font-weight:300;letter-spacing:0;margin-left:.06em;vertical-align:.02em}
 #adl-gl h1 .adl-24 i{position:absolute;right:-.04em;top:.2em;width:.07em;height:.07em;min-width:7px;min-height:7px;border-radius:50%;background:#ff3b30;box-shadow:0 0 0 0 rgba(255,59,48,.6);animation:adl-pulse 1.6s infinite}
-#adl-gl h1 .adl-main{display:block;margin-top:.32em;font-family:"Zen Kaku Gothic New","Noto Sans JP",sans-serif;font-weight:700;letter-spacing:.12em;padding-left:.12em}
+/* 日本語の見出し：「、」「。」は字の右半分が空白なので、その分を詰めて見た目の中心を真ん中にする（この書体は palt が効かないため手で詰める） */
+#adl-gl h1 .adl-main{display:block;margin-top:.32em;font-family:"Zen Kaku Gothic New","Noto Sans JP",sans-serif;font-weight:700;letter-spacing:.12em;font-feature-settings:"palt" 1}
+#adl-gl h1 .adl-main{white-space:nowrap}
+#adl-gl h1 .adl-main .adl-pu{letter-spacing:0;margin-right:-.44em}
+#adl-gl h1 .adl-main .adl-k{margin-right:var(--k)}
+#adl-gl h1 .adl-main .adl-end{letter-spacing:0;margin-right:-.5em}
 #adl-gl h1 .adl-main:lang(en),#adl-gl h1[lang=en] .adl-main{font-family:Inter,sans-serif;font-weight:500;letter-spacing:-.01em;padding-left:0}
 /* サブコピーは1文で1行。狭い画面では文節（.adl-ph）の切れ目でだけ折り返す */
 #adl-gl .adl-lead .adl-ln{display:block}
@@ -96,7 +101,7 @@
 const LANGS = [
   {code:"ja", name:"日本語", published:true, tag:[138.5,37.5], view:[140,30], countries:["392"],
    url:"https://www.youtube.com/watch?v=wAm8r9XCLQA",
-   title:"<span class='adl-24'>24<small>h</small><i></i></span><span class='adl-main'>アドれば、できる。</span>",
+   title:"<span class='adl-24'>24<small>h</small><i></i></span><span class='adl-main'><span class='adl-k' style='--k:-.27em'>ア</span>ドれば<span class='adl-pu'>、</span>で<span class='adl-k' style='--k:-.13em'>き</span>る<span class='adl-end'>。</span></span>",
    lead:[["Addnessの使い方に、","人が24時間ライブで答えます。"],["思い立ったその瞬間に、","次の一歩まで一緒に。"]],
    going:"日本語のライブへ", skip:"もう一度押すとすぐ開きます", share:"このページを送る", copied:"リンクをコピーしました"},
   {code:"en", name:"English", published:false, tag:[-98,40], view:[-62,36],
