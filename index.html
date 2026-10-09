@@ -242,10 +242,18 @@ if(renderer){
         vec3 dayC=texture2D(day,vUv).rgb; vec3 ngt=texture2D(night,vUv).rgb;
         vec3 c=dayC*(.02+1.25*max(db,0.));
         vec3 V=normalize(-pV), Nv=normalize(nV);
-        // 夜：夜景の写真。灯り（暖色）だけを持ち上げて輪郭が読めるようにし、雪や陸地は色を抜いて暗い灰に。少しくっきり読む（-.8）
-        vec3 ngs=texture2D(night,vUv,-.8).rgb; float nl=dot(ngs,vec3(.2126,.7152,.0722));
-        float warm=smoothstep(.0,.25,(ngs.r-ngs.b)/max(nl,1e-4)); float lit=smoothstep(.006,.05,nl)*warm;
-        vec3 nightC=mix(mix(vec3(nl),ngs,.2)*.5, pow(ngs,vec3(.85))*vec3(1.6,1.4,1.15), lit);
+        // 夜：参考の夜景写真に合わせる。①暗い灯り（小さな町）まで拾って陸地じゅうに散らす ②金色（暗いほど橙、明るいほど淡い黄）
+        // ③明るい都市の周りに光のにじみ（ぼかした夜景を足す）④月明かりで地形がうっすら見え、海は陸より暗い（海岸線が形で分かる）
+        vec3 ngs=texture2D(night,vUv,-.6).rgb, nbl=texture2D(night,vUv,3.5).rgb; const vec3 LUM=vec3(.2126,.7152,.0722);
+        float nl=dot(ngs,LUM), bl=dot(nbl,LUM);
+        float warm=smoothstep(.0,.25,(ngs.r-ngs.b)/max(nl,1e-4)), warmB=smoothstep(.0,.25,(nbl.r-nbl.b)/max(bl,1e-4));
+        float a=smoothstep(.0015,.02,nl)*warm;
+        vec3 gold=mix(vec3(1.,.5,.14),vec3(1.,.86,.58),smoothstep(.04,.45,nl));
+        vec3 lights=gold*pow(nl,.6)*2.1*a;
+        vec3 halo=vec3(1.,.58,.2)*pow(bl,1.1)*.55*warmB;
+        float Ld=dot(dayC,LUM); vec3 moonLand=mix(vec3(Ld),dayC,.35)*vec3(.75,.85,1.)*(1.-w*.75);
+        float relief=.55+.45*clamp(dot(nb,normalize(n0+east*.5+north*.7)),0.,1.);
+        vec3 nightC=moonLand*.07*relief+lights+halo;
         c=mix(nightC, c, dm);
         // 選んだ言語の国をうっすら
         float m=texture2D(mask,vUv).r; c+=vec3(.6,.8,1.)*m*maskAmt*(.06+.18*(1.-dm))*(.85+.15*sin(t*2.));
