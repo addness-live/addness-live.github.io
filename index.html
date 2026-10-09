@@ -242,9 +242,10 @@ if(renderer){
         vec3 dayC=texture2D(day,vUv).rgb; vec3 ngt=texture2D(night,vUv).rgb;
         vec3 c=dayC*(.02+1.25*max(db,0.));
         vec3 V=normalize(-pV), Nv=normalize(nV);
-        // 夜：夜景の写真（街の灯りは写真の色のまま少し明るく。陸地の青紫は色を抜いて、月明かりほどの暗い灰にする）
-        float nl=dot(ngt,vec3(.2126,.7152,.0722)), lit=smoothstep(.06,.3,nl);
-        vec3 nightC=mix(mix(vec3(nl),ngt,.25)*.7, ngt*1.8, lit);
+        // 夜：夜景の写真。灯り（暖色）だけを持ち上げて輪郭が読めるようにし、雪や陸地は色を抜いて暗い灰に。少しくっきり読む（-.8）
+        vec3 ngs=texture2D(night,vUv,-.8).rgb; float nl=dot(ngs,vec3(.2126,.7152,.0722));
+        float warm=smoothstep(.0,.25,(ngs.r-ngs.b)/max(nl,1e-4)); float lit=smoothstep(.006,.05,nl)*warm;
+        vec3 nightC=mix(mix(vec3(nl),ngs,.2)*.5, pow(ngs,vec3(.85))*vec3(1.6,1.4,1.15), lit);
         c=mix(nightC, c, dm);
         // 選んだ言語の国をうっすら
         float m=texture2D(mask,vUv).r; c+=vec3(.6,.8,1.)*m*maskAmt*(.06+.18*(1.-dm))*(.85+.15*sin(t*2.));
