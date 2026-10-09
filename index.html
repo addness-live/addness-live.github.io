@@ -115,6 +115,8 @@ const TOKYO=[139.69,35.69], HOME_VIEW=[128,30];
 const TEX="https://cdn.jsdelivr.net/gh/mrdoob/three.js@r160/examples/textures/planets/";
 // 自前で置く画像（NASA）。ページと同じ場所の assets/ から読む：10月の地球（雪の季節に合わせる）・全天の星空
 const EARTH_IMG="assets/earth-oct-4096.jpg", SKY_IMG="assets/sky-milkyway.jpg";
+// 夜の地球：NASA Black Marble 2016（衛星で撮った夜景）。PCの高精細版と、スマホ用の軽い版
+const NIGHT_IMG_HI="assets/night-8192.jpg", NIGHT_IMG="assets/night-4096.jpg";
 
 const root=document.getElementById("adl-gl"), $=s=>root.querySelector(s);
 const preview=/[?&]preview=all\b/.test(location.search);
@@ -224,7 +226,7 @@ if(renderer){
   const tex=(n,srgb)=>{const t=loader.load(/^(https?:|assets\/)/.test(n)?n:TEX+n); if(srgb) t.colorSpace=THREE.SRGBColorSpace; t.anisotropy=renderer.capabilities.getMaxAnisotropy(); return t;};
   const maskCanvas=document.createElement("canvas"); maskCanvas.width=2048; maskCanvas.height=1024;
   const maskTex=new THREE.CanvasTexture(maskCanvas);
-  const U={day:{value:tex(EARTH_IMG,1)},night:{value:tex("earth_lights_2048.png",1)},nrm:{value:tex("earth_normal_2048.jpg")},spec:{value:tex("earth_specular_2048.jpg")},
+  const U={day:{value:tex(EARTH_IMG,1)},night:{value:tex(renderer.capabilities.maxTextureSize>=8192&&root.clientWidth>=900?NIGHT_IMG_HI:NIGHT_IMG,1)},nrm:{value:tex("earth_normal_2048.jpg")},spec:{value:tex("earth_specular_2048.jpg")},
     mask:{value:maskTex},maskAmt:{value:0},sunL:{value:new THREE.Vector3(1,0,0)},t:{value:0}};
   const FILMIC="vec3 film(vec3 x){x*=1.15;return clamp((x*(2.51*x+.03))/(x*(2.43*x+.59)+.14),0.,1.);}";
   const mat=new THREE.ShaderMaterial({uniforms:U,
@@ -240,8 +242,10 @@ if(renderer){
         vec3 dayC=texture2D(day,vUv).rgb; vec3 ngt=texture2D(night,vUv).rgb;
         vec3 c=dayC*(.02+1.25*max(db,0.));
         vec3 V=normalize(-pV), Nv=normalize(nV);
-        // 夜：街の灯り
-        c=mix(ngt*vec3(1.,.82,.55)*1.6+dayC*.01, c, dm);
+        // 夜：夜景の写真（街の灯りは写真の色のまま少し明るく。陸地の青紫は色を抜いて、月明かりほどの暗い灰にする）
+        float nl=dot(ngt,vec3(.2126,.7152,.0722)), lit=smoothstep(.06,.3,nl);
+        vec3 nightC=mix(mix(vec3(nl),ngt,.25)*.7, ngt*1.8, lit);
+        c=mix(nightC, c, dm);
         // 選んだ言語の国をうっすら
         float m=texture2D(mask,vUv).r; c+=vec3(.6,.8,1.)*m*maskAmt*(.06+.18*(1.-dm))*(.85+.15*sin(t*2.));
         // ふちの大気
