@@ -117,6 +117,7 @@ const TEX="https://cdn.jsdelivr.net/gh/mrdoob/three.js@r160/examples/textures/pl
 const EARTH_IMG="assets/earth-oct-4096.jpg", SKY_IMG="assets/sky-milkyway.jpg";
 // 夜の地球：NASA Black Marble 2016（衛星で撮った夜景）。PCの高精細版と、スマホ用の軽い版
 const NIGHT_IMG_HI="assets/night-8192.jpg", NIGHT_IMG="assets/night-4096.jpg";
+// スマホは最初の灯り（three.js の灯り画像を金色寄りに）のほうが映えるので、PCだけ本物の夜景（本人判断 2026-10-09）
 
 const root=document.getElementById("adl-gl"), $=s=>root.querySelector(s);
 const preview=/[?&]preview=all\b/.test(location.search);
@@ -226,13 +227,14 @@ if(renderer){
   const tex=(n,srgb)=>{const t=loader.load(/^(https?:|assets\/)/.test(n)?n:TEX+n); if(srgb) t.colorSpace=THREE.SRGBColorSpace; t.anisotropy=renderer.capabilities.getMaxAnisotropy(); return t;};
   const maskCanvas=document.createElement("canvas"); maskCanvas.width=2048; maskCanvas.height=1024;
   const maskTex=new THREE.CanvasTexture(maskCanvas);
-  const U={day:{value:tex(EARTH_IMG,1)},night:{value:tex(renderer.capabilities.maxTextureSize>=8192&&root.clientWidth>=900?NIGHT_IMG_HI:NIGHT_IMG,1)},nrm:{value:tex("earth_normal_2048.jpg")},spec:{value:tex("earth_specular_2048.jpg")},
+  const PC_NIGHT=renderer.capabilities.maxTextureSize>=8192&&root.clientWidth>=900;
+  const U={day:{value:tex(EARTH_IMG,1)},night:{value:tex(PC_NIGHT?NIGHT_IMG_HI:"earth_lights_2048.png",1)},classic:{value:PC_NIGHT?0:1},nrm:{value:tex("earth_normal_2048.jpg")},spec:{value:tex("earth_specular_2048.jpg")},
     mask:{value:maskTex},maskAmt:{value:0},sunL:{value:new THREE.Vector3(1,0,0)},t:{value:0}};
   const FILMIC="vec3 film(vec3 x){x*=1.15;return clamp((x*(2.51*x+.03))/(x*(2.43*x+.59)+.14),0.,1.);}";
   const mat=new THREE.ShaderMaterial({uniforms:U,
     vertexShader:`varying vec2 vUv;varying vec3 nL;varying vec3 nV;varying vec3 pV;varying vec3 sV;uniform vec3 sunL;
       void main(){vUv=uv;nL=normal;nV=normalize(normalMatrix*normal);vec4 mv=modelViewMatrix*vec4(position,1.);pV=mv.xyz;sV=normalize((modelViewMatrix*vec4(sunL,0.)).xyz);gl_Position=projectionMatrix*mv;}`,
-    fragmentShader:`uniform sampler2D day,night,nrm,spec,mask;uniform vec3 sunL;uniform float maskAmt,t;varying vec2 vUv;varying vec3 nL;varying vec3 nV;varying vec3 pV;varying vec3 sV;
+    fragmentShader:`uniform sampler2D day,night,nrm,spec,mask;uniform vec3 sunL;uniform float maskAmt,t,classic;varying vec2 vUv;varying vec3 nL;varying vec3 nV;varying vec3 pV;varying vec3 sV;
       ${FILMIC}
       void main(){
         vec3 n0=normalize(nL), sn=normalize(sunL); float d=dot(n0,sn); float dm=smoothstep(-.1,.18,d);
@@ -254,6 +256,7 @@ if(renderer){
         float Ld=dot(dayC,LUM); vec3 moonLand=mix(vec3(Ld),dayC,.35)*vec3(.75,.85,1.)*(1.-w*.75);
         float relief=.55+.45*clamp(dot(nb,normalize(n0+east*.5+north*.7)),0.,1.);
         vec3 nightC=moonLand*.07*relief+lights+halo;
+        if(classic>.5) nightC=ngt*vec3(1.,.82,.55)*1.6+dayC*.01;  // スマホ：最初の灯り
         c=mix(nightC, c, dm);
         // 選んだ言語の国をうっすら
         float m=texture2D(mask,vUv).r; c+=vec3(.6,.8,1.)*m*maskAmt*(.06+.18*(1.-dm))*(.85+.15*sin(t*2.));
