@@ -1,0 +1,161 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<title>ランダム出題｜Addness 24hライブ</title>
+<style>
+  :root {
+    --bg: #f6f5f2; --card: #ffffff; --ink: #1d1d1f; --sub: #6b6b70;
+    --line: #e3e1dc; --accent: #ff5a1f; --accent-ink: #ffffff;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root { --bg: #151517; --card: #202024; --ink: #f2f2f4; --sub: #a0a0a8; --line: #33333a; }
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: var(--bg); color: var(--ink);
+    font-family: -apple-system, BlinkMacSystemFont, "Hiragino Sans", "Noto Sans JP", sans-serif;
+    min-height: 100vh; display: flex; flex-direction: column; align-items: center;
+    padding: 32px 16px;
+  }
+  main { width: 100%; max-width: 720px; }
+  h1 { font-size: 18px; margin: 0 0 4px; }
+  .lead { color: var(--sub); font-size: 14px; margin: 0 0 24px; line-height: 1.6; }
+  .card {
+    background: var(--card); border: 1px solid var(--line); border-radius: 16px;
+    padding: 28px 24px; min-height: 180px; display: flex; align-items: center;
+    font-size: 20px; line-height: 1.7; white-space: pre-wrap; word-break: break-word;
+  }
+  .card.empty { color: var(--sub); font-size: 16px; justify-content: center; text-align: center; }
+  .row { display: flex; gap: 12px; margin-top: 16px; flex-wrap: wrap; }
+  button {
+    font: inherit; font-size: 16px; font-weight: 600; border-radius: 12px;
+    padding: 14px 20px; cursor: pointer; border: 1px solid var(--line);
+    background: var(--card); color: var(--ink);
+  }
+  button.primary { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); flex: 1; min-width: 200px; }
+  button:disabled { opacity: .45; cursor: default; }
+  .meta { color: var(--sub); font-size: 13px; margin-top: 12px; }
+</style>
+</head>
+<body>
+<main>
+  <h1>ランダム出題</h1>
+  <p class="lead">ライブで実際に来た質問が1つ出ます。判定役は、これを視聴者のつもりでコメント欄に投げてください。答える人は、いつもどおり質問回答のセッションに貼って答えます。</p>
+
+  <div id="q" class="card empty">「出題する」を押してください</div>
+
+  <div class="row">
+    <button id="next" class="primary">出題する</button>
+    <button id="copy" disabled>コピー</button>
+  </div>
+  <div id="meta" class="meta"></div>
+</main>
+
+<script>
+// ライブで実際に来た質問（視聴者のコメントの原文。名前は消してある）
+// 出典：アドネス株式会社のゴール d2a1d96b-763a-4098-a898-68a1eea1a87c（10/3〜10/16）と作業場 projects/addness-assist-live/questions/
+// 足す時は、実際にライブで来たコメントを1行1つで足す
+window.QUESTIONS = [
+  "すみませんテンプレート機能の話なのですが、Claudeで組んでいるルーティンと何が違うのでしょうか？",
+  "個人設定から連携を開いても、メッセンジャーと連携が出てこないんですけど、反映に時間がかかっているんですかね？（Macでアプリをダウンロードして使っています）",
+  "クロードがつなげません。リポジトリを選択と表示されチャットが送れません！（Claudeはデスクトップで開いていて、Claude Codeになっていました）",
+  "音声入力について質問です。設定から音声入力を開いて初回セットアップからの設定と聞きましたが、初回セットアップが表示されません。ダウンロードしなおしましたが表示されませんでした。何か対策はありますか？",
+  "個人LINEの連携は、Windowsはまだ未対応ですか？",
+  "Addness DesktopアプリとAddnessスマホアプリで、スマホからPCのCodexに依頼しようと「スマホからAIに依頼できるようにする」のゴールを進めているのですが、なかなかつながりません。何かご存じでしょうか？",
+  "個人LINEの連携をしているのですが、メールアドレスとパスワードを何度入れても連携できないのですが、何か解決方法はありますでしょうか。",
+  "複数のGmailを紐づける方法はありますか？Claudeの連携だと、二つ目を連携するときは一つ目の連携を外さないといけなくて、、",
+  "上部に更新の案内が出ていたので実行したのですが、「更新の適用に失敗しました（Cannot update while running on a read-only volume.）」と出ます。アプリも更新してから行いましたが、ダメでした。",
+  "Addnessにナレッジとして保存するのと、マークダウンでナレッジと保存するのとでは、やはりAddnessの方が精度はいいのでしょうか？また、なぜAddnessにナレッジとして保存した方がいいのかも教えていただきたいです。",
+  "ここで質問していいのか分かりませんが、Lv.10になったことで、「最初の1ヶ月が無料になる贈り物を送れます。」とURLが来ました。７日間無料でお試し頂いてるお客様に送っても良いのでしょうか？",
+  "ゴールAでチャットをしていて、やり取りの結果ゴールBができ、そこでもチャットすることになりました。AとBはタスクとしては繋がっているので、チャットとしては分けたくないです。新しいゴールが生まれた時のチャットの上手な活用法はありますか？",
+  "AddnessのMCPをClaude Codeから使っています。update_goalで完了基準を送ると「成功」と出るのに画面に反映されず、add_commentが404エラーになります。",
+  "Addnessのフォームを実際に使ってみたところ、プレビューからの「編集にもどる」のボタンが反応しません。",
+  "Addnessボイスの音声入力の精度がかなり悪いです",
+  "Addnessのクーポンを使うために、来週、一度契約を終了してすぐに再契約します。フォームに蓄積した回答はそのまま残るでしょうか？",
+  "ゲストメンバーを、タスクの責任者にする方法はありますか？業務委託の方（ゲスト）に振ったタスクを、ツリーのアバターで見えるようにしたいです。責任者にしようとすると「guest_cannot_hold_role」のエラーになります。",
+  "活用レポートの「話して決める」は何をしたら上がりますか？",
+  "ゲスト権限の「AIで進める」について。メンバーからゲストに切り替えたアカウントは実行できますが、最初からゲストで招待したアカウントは実行できません。これは仕様でしょうか？",
+  "MacのPCが故障してしまい、急遽一旦WindowsのPCを使うことに。以前の作業場をそのまま使う方法を教えてください。",
+  "現場の人に使ってもらうためにAddnessとCodexを導入して、セットアップ（レベル50）まで終わりました。でも、してほしいタスクを入力して壁打ちしながら進めていても、タスクが増えて完了になっていかないです。",
+  "容量が足りなくて、Addnessのドライブに入っている動画をゴミ箱から完全に削除するときはどうすればよろしいでしょうか？",
+  "AIに依頼するのところにChatGPTも増えましたよね？Codexとの使い分けなどはありますか？",
+  "スマホ版AddnessからCodexを起動させようと思ってもエラーが出るんですが、なんでなんでしょうか。デスクトップアプリの設定はオンにしていて、PCも起動させています！",
+  "Slackは連携できたのですが、LINEとも連携させたいのに見つけられません。何が原因かわからないので、アドバイス頂けると幸いです。",
+  "Macでアプリ版を使っているときに、「マイドライブ」に保存したcsvファイルを開いた後、閉じようとして右上のボタンを押しても閉じることができません。Web版だと問題ないのですが、確認してもらえますか？",
+  "テンプレートを作成し「定期的に追加」をしたいのですが、「一部の担当者分を追加できませんでした（自分）」のエラーが出て追加できません。",
+  "Addness上でゴールを探す時ってどうしてますか？最近、400近くあって、探すのに一苦労してます笑",
+  "三上こうたさんのYouTubeでもらった環境設定をしようとタップしたのですが、「テンプレートがありません」と表示されました。なぜでしょうか",
+  "CodexとClaude CodeでAddnessとの連携をしようとしていたのですが、上手く行かず苦戦しています。どのようにすれば良いでしょうか（AIのダウンロードもAddnessの登録も終わっています）",
+  "どうやったら三上さんみたいに20並列とかで回せるんでしょうか？Claude Codeをautoモードにしても10並列ぐらいで判断を求められて、それ以上いかないのですが笑",
+  "実行タブの自作ウィジェットが「再確認が必要です」と表示されますが、許可ボタンが見当たりません。実行を許可する場所、または表示されない原因を教えてください。",
+  "ルーティンの設定で、毎日ルーティンだとタスクが終わらないと無限に増え続けてしまいます。できれば自動消去がいいのですが、何か方法ありますか？Claude Codeに聞いたのですが、わからず。。。",
+  "LINE WORKSとは連携できますか？AIに聞いてもわかりませんでした！",
+  "Addnessアプリを入れたのですが、使い方が分からないです。Codexとの連携方法について教えてほしいです。",
+  "MTG機能を使った録画はどこに保存されますか？",
+  "テンプレート機能の型を社内で共有して編集したいのですが、責任者アサインも編集者の追加も今の仕様ではできないと思います！対策や仕様変更などはありませんでしょうか？",
+  "Addness Proで課金しています。できることが確認できる画面を教えてください",
+  "昨日からAddnessを使っています。三上社長はFableを頭に、OpusとAstraを手にしているとおっしゃっていたので、私もAddnessのテンプレでセットアップしているのですが、FableからAstraへの連絡がうまくいっていません。どのようにセットアップしたら良いですか？",
+  "現在、月払いのProを利用していますが、Starterへ変更できますか？",
+  "導入や初期の使い方のウェビナーみたいなのあったりしますでしょうか？",
+  "Marketplaceという機能が追加されましたよね。全て取り込む方がいいですか？それとも特におすすめのものがあれば教えていただきたいです",
+  "上から4つ目のChallengesについて。項目を達成するとポイントがもらえるご褒美的な画面に見えますが、ここに書いてあることをこなしていけばAddnessを上手に使えるようになる、初心者向けの手引きのようなものなのでしょうか？",
+  "音声入力を使用しないのですが、オンにしないと画面から消えないので、音声入力をON/OFFにする設定を設けていただきたくお願いいたします。",
+  "Addnessの最上位モデルはいまいくらですか？",
+  "Addnessを開くと、みかみの秘密のAIラボの案内も表示されるのですが、すでに会員になっています。秘密のAIラボとAddnessをつなぎたいのですが、どうすれば良いでしょうか？",
+  "Addness 700円プランってどこから契約しますか？（1つ目はFocusで、2つ目のワークスペースを作りたいです）",
+  "2日前にAddnessに課金についてお問い合わせしたのですが、どのくらいでご返信いただけますでしょうか？（無料トライアル中に課金が発生した件です）",
+  "議事録botってAIに指示して入れますよね？自分で手動で入れる方法はないですか？",
+  "Claude・Codexの運用について質問です。会社ドメインのClaudeアカウントが一括停止され、復旧に2日かかりました。停止リスクを避けつつ、個人契約の範囲で利用量を確保する場合、推奨の運用方法・アカウント構成を教えていただきたいです。",
+  "社長のアカウントに外注フリーランスを招待するのはNGですか？",
+  "代表の私がAddnessを使っていて、部下を一名アサインしましたが、使い方がいまいちわからない状態です。",
+  "ゴール設定をして期限と具体を決めた後、AIに処理させるだけでなく自分の手で処理することもあると思いますが、自分で処理した時のタスクの進捗は、どのように反映させればいいですか？",
+  "Addnessとグロックの接続方法を教えて頂けると幸いです。",
+  "Macアプリでも、⌘＋で文字を大きくできるようにしてほしいです。",
+  "個人LINEが「接続済み」になっているのに、同期が sync_failed になります。"
+];
+</script>
+<script>
+  const all = window.QUESTIONS || [];
+  let deck = [];
+  let shown = 0;
+  let current = "";
+  const q = document.getElementById("q");
+  const meta = document.getElementById("meta");
+  const copyBtn = document.getElementById("copy");
+
+  // 全部出るまで同じ質問が出ないように、山札を切って上から出す
+  function shuffle() {
+    deck = all.slice();
+    for (let i = deck.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [deck[i], deck[j]] = [deck[j], deck[i]];
+    }
+  }
+
+  document.getElementById("next").addEventListener("click", () => {
+    if (deck.length === 0) { shuffle(); shown = 0; }
+    current = deck.pop();
+    shown++;
+    q.textContent = current;
+    q.classList.remove("empty");
+    copyBtn.disabled = false;
+    copyBtn.textContent = "コピー";
+    meta.textContent = `${shown} / ${all.length} 問目（全部出たら、また最初から混ぜ直します）`;
+  });
+
+  copyBtn.addEventListener("click", async () => {
+    try {
+      await navigator.clipboard.writeText(current);
+      copyBtn.textContent = "コピーしました";
+    } catch (e) {
+      copyBtn.textContent = "コピーできませんでした";
+    }
+  });
+
+  meta.textContent = `全部で ${all.length} 問`;
+</script>
+</body>
+</html>
