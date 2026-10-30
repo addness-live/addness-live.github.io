@@ -9,7 +9,13 @@
 <style>html,body{margin:0;background:#000}</style>
 </head>
 <body>
-<!-- ▼ 入口ページの本体（GitHub Pages では deploy.sh がこのファイルを index.html として公開する） ▼ -->
+<!-- ▼ 入口ページの本体（GitHub Pages では deploy.sh がこのファイルをそのまま index.html として公開する） ▼
+     2026-10-30 globe.html（こだわり版）を元に、待ちを無くした版（ゴール b07b4153）：
+     ・文字とボタンは開いた瞬間に出す（順にふわっと出す演出をやめた。ボタンが出るまで約3秒かかっていた）
+     ・ボタンを押したら新しいタブで即配信（地球が回ってから移る約3秒の待ちをやめた）
+     ・英語のボタンは一旦外す（三上さん 10/29）
+     ・光の弧は、ボタンを外した言語（英語）の国へも今までどおり飛ばす（日本だけだと意味が分からないため。高見澤さん 10/30）
+     ・PCの夜景は 8192px→4096px（3.1MB→0.6MB）、描く解像度は最大1.5倍 -->
 <div id="adl-gl">
 <style>
 #adl-gl{cursor:grab;touch-action:pan-y;user-select:none;-webkit-user-select:none;position:relative;overflow:hidden;height:100vh;height:100svh;min-height:560px;background:#000;color:#fff;
@@ -77,6 +83,12 @@
 }
 @keyframes adl-in{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
 @media (max-width:640px){#adl-gl .adl-eyebrow{letter-spacing:.24em;font-size:10px}#adl-gl .adl-share{left:50%;right:auto;transform:translateX(-50%)}}
+/* 待ちを無くす：見出し・説明・ボタンは最初から出しておく */
+#adl-gl .adl-bar,#adl-gl .adl-eyebrow,#adl-gl h1,#adl-gl .adl-lead,#adl-gl .adl-langs{animation:none;opacity:1}
+/* 日本語だけなので、ボタンは1つを大きく */
+#adl-gl a.adl-lang{padding:16px 28px 16px 24px;font-size:17px;font-weight:700;color:#0b0d14;background:#fff;border-color:#fff;box-shadow:0 10px 40px rgba(80,130,255,.35)}
+#adl-gl a.adl-lang:hover,#adl-gl a.adl-lang:focus-visible{background:#fff;box-shadow:0 14px 48px rgba(80,130,255,.5)}
+#adl-gl a.adl-lang i{width:9px;height:9px;border-radius:50%;background:#ff3b30;font-size:0;opacity:1;animation:adl-pulse 1.6s infinite}
 @media (prefers-reduced-motion:reduce){#adl-gl *{animation-duration:.01s!important;animation-delay:0s!important}}
 </style>
 
@@ -100,12 +112,12 @@
 /* ===== 言語の一覧：言語を増やす時はここに1行足す（published:false は出ない。?preview=all で全部出る）
    countries：光らせる国（ISOの数字コード）　tag：地球に札を立てる場所　view：選んだ時に地球を向ける場所 [経度,緯度] ===== */
 const LANGS = [
-  {code:"ja", name:"日本語", published:true, tag:[138.5,37.5], view:[140,30], countries:["392"],
+  {code:"ja", name:"日本語のライブを見る", tagName:"日本語", published:true, tag:[138.5,37.5], view:[140,30], countries:["392"],
    url:"https://www.youtube.com/watch?v=wAm8r9XCLQA",
    title:"<span class='adl-24'>24<small>h</small><i></i></span><span class='adl-main'><span class='adl-k' style='--k:-.27em'>ア</span>ドれば<span class='adl-pu'>、</span>で<span class='adl-k' style='--k:-.13em'>き</span>る<span class='adl-end'>。</span></span>",
    lead:[["Addnessの使い方に、","人が24時間ライブで答える場を目指します。"],["今はまだ、人がいない時間もあります。"]],
    going:"日本語のライブへ", skip:"もう一度押すとすぐ開きます", share:"このページを送る", copied:"リンクをコピーしました"},
-  {code:"en", name:"English", published:true, tag:[-98,40], view:[-62,36],
+  {code:"en", name:"English", published:false, tag:[-98,40], view:[-62,36],
    countries:["840","826","124","036","554","372","566","710","404","288","356","608"],
    url:"https://www.youtube.com/watch?v=-2AlQNuuPgY",
    title:"<span class='adl-24'>24<small>h</small><i></i></span><span class='adl-main'>Addness it. Get it done.</span>",
@@ -117,12 +129,13 @@ const TEX="https://cdn.jsdelivr.net/gh/mrdoob/three.js@r160/examples/textures/pl
 // 自前で置く画像（NASA）。ページと同じ場所の assets/ から読む：10月の地球（雪の季節に合わせる）・全天の星空
 const EARTH_IMG="assets/earth-oct-4096.jpg", SKY_IMG="assets/sky-milkyway.jpg";
 // 夜の地球：NASA Black Marble 2016（衛星で撮った夜景）。PC用
-const NIGHT_IMG_HI="assets/night-8192.jpg";
+const NIGHT_IMG_HI="assets/night-4096.jpg";
 // スマホは最初の灯り（three.js の灯り画像を金色寄りに）のほうが映えるので、PCだけ本物の夜景（本人判断 2026-10-09）
 
 const root=document.getElementById("adl-gl"), $=s=>root.querySelector(s);
 const preview=/[?&]preview=all\b/.test(location.search);
 const shown=LANGS.filter(l=>l.published||preview);
+const arcLangs=LANGS;   // 地球の光の弧はボタンを出していない言語の国へも飛ばす
 const nav=(navigator.language||"ja").slice(0,2).toLowerCase();
 const order=shown.slice().sort((a,b)=>(b.code===nav)-(a.code===nav));
 
@@ -141,8 +154,9 @@ let flying=null;
 var setView=()=>{}, setMask=()=>{}, flyStart=0;
 const box=$("#adl-langs"), tagBox=$("#adl-tags"), goEl=$("#adl-go"), fade=$("#adl-fade");
 function choose(l,e){
-  if(e&&(e.metaKey||e.ctrlKey||e.shiftKey||e.button===1)) return;   // 新しいタブで開く時はそのまま
-  if(e) e.preventDefault();
+  // 待たずに新しいタブで開く（ボタンは a の target=_blank に任せ、地球の札だけ window.open）
+  if(!e||e.currentTarget.tagName!=="A") window.open(l.url,"_blank","noopener");
+  return;
   if(flying===l){ location.href=l.url; return; }                    // 2回目はすぐ開く
   flying=l; flyStart=performance.now(); setView(l.view,1.0);
   goEl.innerHTML=l.going+"<small>"+l.skip+"</small>"; goEl.classList.add("adl-show");
@@ -150,13 +164,13 @@ function choose(l,e){
   clearTimeout(choose._t); choose._t=setTimeout(()=>{fade.style.opacity=1; setTimeout(()=>{location.href=l.url;},550);},2600);
 }
 shown.forEach(l=>{
-  const a=document.createElement("a"); a.className="adl-lang"; a.href=l.url; a.lang=l.code;
+  const a=document.createElement("a"); a.className="adl-lang"; a.href=l.url; a.target="_blank"; a.rel="noopener"; a.lang=l.code;
   a.innerHTML="<i>"+l.code.toUpperCase()+"</i>"+l.name+"<b>→</b>";
   a.addEventListener("click",e=>choose(l,e));
   a.addEventListener("mouseenter",()=>{ if(!flying) setMask(l); });
   a.addEventListener("mouseleave",()=>{ if(!flying) setMask(null); });
   box.appendChild(a);
-  const t=document.createElement("div"); t.className="adl-tag"; t.innerHTML="<span>"+l.name+"</span>"; t.style.opacity=0;
+  const t=document.createElement("div"); t.className="adl-tag"; t.innerHTML="<span>"+(l.tagName||l.name)+"</span>"; t.style.opacity=0;
   t.addEventListener("click",e=>choose(l,e)); tagBox.appendChild(t); l._tag=t;
 });
 // 戻るボタンで戻ってきた時に暗いままにしない
@@ -219,7 +233,7 @@ if(!renderer){ buildSky(); window.addEventListener("resize",buildSky); (function
 if(renderer){
   const D2R=Math.PI/180;
   const ll2v=(lon,lat,r=1)=>new THREE.Vector3(Math.cos(lat*D2R)*Math.cos(lon*D2R)*r, Math.sin(lat*D2R)*r, -Math.cos(lat*D2R)*Math.sin(lon*D2R)*r);
-  renderer.setPixelRatio(Math.min(devicePixelRatio||1,2));
+  renderer.setPixelRatio(Math.min(devicePixelRatio||1,1.5));
   const scene=new THREE.Scene(), camera=new THREE.PerspectiveCamera(30,1,0.1,100);
   const tilt=new THREE.Group(), earth=new THREE.Group(); tilt.add(earth); scene.add(tilt);
 
@@ -228,7 +242,7 @@ if(renderer){
   const tex=(n,srgb)=>{const t=loader.load(/^(https?:|assets\/)/.test(n)?n:TEX+n); if(srgb) t.colorSpace=THREE.SRGBColorSpace; t.anisotropy=renderer.capabilities.getMaxAnisotropy(); return t;};
   const maskCanvas=document.createElement("canvas"); maskCanvas.width=2048; maskCanvas.height=1024;
   const maskTex=new THREE.CanvasTexture(maskCanvas);
-  const PC_NIGHT=renderer.capabilities.maxTextureSize>=8192&&root.clientWidth>=900;
+  const PC_NIGHT=renderer.capabilities.maxTextureSize>=4096&&root.clientWidth>=900;
   const U={day:{value:tex(EARTH_IMG,1)},night:{value:tex(PC_NIGHT?NIGHT_IMG_HI:"earth_lights_2048.png",1)},classic:{value:PC_NIGHT?0:1},nrm:{value:tex("earth_normal_2048.jpg")},spec:{value:tex("earth_specular_2048.jpg")},
     mask:{value:maskTex},maskAmt:{value:0},sunL:{value:new THREE.Vector3(1,0,0)},t:{value:0}};
   const FILMIC="vec3 film(vec3 x){x*=1.15;return clamp((x*(2.51*x+.03))/(x*(2.43*x+.59)+.14),0.,1.);}";
@@ -309,8 +323,8 @@ if(renderer){
   let topo=null, targets={};
   import("https://cdn.jsdelivr.net/npm/topojson-client@3.1.0/+esm").then(tj=>fetch("https://cdn.jsdelivr.net/npm/world-atlas@2.0.2/countries-110m.json").then(r=>r.json()).then(j=>{
     const feats=tj.feature(j,j.objects.countries).features;
-    shown.forEach(l=>{ l._feats=feats.filter(f=>(l.countries||[]).includes(String(f.id))); });
-    topo=true; shown.forEach(l=>{ targets[l.code]=sampleTargets(l); });
+    arcLangs.forEach(l=>{ l._feats=feats.filter(f=>(l.countries||[]).includes(String(f.id))); });
+    topo=true; arcLangs.forEach(l=>{ targets[l.code]=sampleTargets(l); });
   })).catch(()=>{});
   function drawFeats(g,feats,W,H,strokeOnly){
     feats.forEach(f=>{ const polys=f.geometry.type==="Polygon"?[f.geometry.coordinates]:f.geometry.coordinates;
@@ -396,7 +410,7 @@ if(renderer){
     // 光の弧：いつもは公開中の言語の国へ時々。選んだ時は、東京からその言語の場所へ1本だけ（選んだ時に足す）
     if(flying&&flyArc!==flying){ flyArc=flying; if(!flying.countries.includes("392")) addArc(flying.tag,true); }
     if(!flying) flyArc=null;
-    if(!flying&&now>nextIdle){ const pool=shown.filter(l=>!l.countries.includes("392")||shown.length===1);
+    if(!flying&&now>nextIdle){ const pool=arcLangs.filter(l=>!l.countries.includes("392")||arcLangs.length===1);
       const l=pool[Math.floor(Math.random()*pool.length)]; const tg=l&&targets[l.code];
       if(tg&&tg.length) addArc(tg[Math.floor(Math.random()*tg.length)],false); nextIdle=now+900; }
     for(let i=arcs.length-1;i>=0;i--){ const A=arcs[i], t=Math.max(0,(now-A.t0)/A.dur);
