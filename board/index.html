@@ -63,6 +63,9 @@
   const board = document.getElementById('board');
   const bar = document.getElementById('bar');
   const msg = document.getElementById('msg');
+  // 小窓（最前面）に移るとボードは別の文書に入り、document からは探せなくなる。最初につかんでおく
+  const bgPick = document.getElementById('bgPick');
+  const fgPick = document.getElementById('fgPick');
   let state = load();
   let sel = null;   // 選んでいるボックスの要素
   let pipWin = null;
@@ -80,14 +83,14 @@
     list.forEach(c => { const b = document.createElement('button'); b.className = 'sw'; b.style.background = c; b.title = c; b.onclick = () => apply(c); holder.appendChild(b); });
     pick.oninput = () => apply(pick.value);
   }
-  function setBg(c) { state.bg = c; board.style.setProperty('--bg', c); document.getElementById('bgPick').value = c; save(); }
+  function setBg(c) { state.bg = c; board.style.setProperty('--bg', c); bgPick.value = c; save(); }
   function setFg(c) {
-    document.getElementById('fgPick').value = c;
+    fgPick.value = c;
     if (!sel) { state.fg = c; save(); return; }
     const b = find(sel); b.color = c; sel.style.color = c; save();
   }
-  swatches(document.getElementById('bgSw'), BG, document.getElementById('bgPick'), setBg);
-  swatches(document.getElementById('fgSw'), FG, document.getElementById('fgPick'), setFg);
+  swatches(document.getElementById('bgSw'), BG, bgPick, setBg);
+  swatches(document.getElementById('fgSw'), FG, fgPick, setFg);
 
   // ---- ボックス ----
   function render(b) {
@@ -105,7 +108,7 @@
     if (sel && sel !== el) stopEdit(sel);
     board.querySelectorAll('.box.sel').forEach(x => x !== el && x.classList.remove('sel'));
     sel = el;
-    if (el) { el.classList.add('sel'); document.getElementById('fgPick').value = find(el).color; }
+    if (el) { el.classList.add('sel'); fgPick.value = find(el).color; }
   }
   function startEdit(el) {
     const t = el.querySelector('.t');
@@ -208,7 +211,7 @@
   // ---- 起動 ----
   setBg(state.bg);
   state.boxes.forEach(render);
-  document.getElementById('fgPick').value = state.fg || '#ffffff';
+  fgPick.value = state.fg || '#ffffff';
 })();
 </script>
 </body>
