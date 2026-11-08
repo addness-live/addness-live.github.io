@@ -1,0 +1,215 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ライブ用ボード</title>
+<!--
+  ライブ用ボード（正本ゴール ba1a58bb-9f46-4bf8-9e0d-4a664d37e4d5 / 子 1d9b1b4d-39bb-49f2-84fe-cea8815df8ff）
+  ライバーが自分の画面に「いま何をやっているか」を置く札。中継機には何も足さない。
+  - 「＋文字」で文字ボックスを足す。ボックスを押すと選ばれ、右下の角をつまんで動かすと文字の大きさが変わる。ボックスはドラッグで動かす
+  - 選んだボックスをもう一度押すと文字を書き換えられる。消すのは🗑か Delete キー
+  - 「最前面」で Chrome / Edge の小窓（Document Picture-in-Picture）に移る。小窓はほかのアプリより常に手前に出る
+  - 中身はこのブラウザ（localStorage）に残る。外には送らない
+  - 道具の帯・選んだ枠は、マウスがボードの外にある時は消える（配信に映らないように）
+-->
+<style>
+  * { box-sizing: border-box; }
+  html, body { margin: 0; height: 100%; }
+  body { font-family: "Hiragino Sans", "BIZ UDPGothic", "Yu Gothic UI", "Meiryo", sans-serif; background: #222; color: #eee; }
+  #board { position: relative; width: 100%; height: 100%; overflow: hidden; background: var(--bg, #1a73e8); }
+  #bar { position: absolute; left: 0; right: 0; top: 0; z-index: 10; display: flex; flex-wrap: wrap; gap: 6px; align-items: center;
+         padding: 6px 8px; background: rgba(20,20,20,.88); color: #fff; font-size: 13px; transition: opacity .15s; }
+  #board:not(:hover) #bar { opacity: 0; pointer-events: none; }
+  #bar button { font: inherit; color: #fff; background: #3a3a3a; border: 1px solid #555; border-radius: 6px; padding: 4px 10px; cursor: pointer; }
+  #bar button:hover { background: #4a4a4a; }
+  #bar button.on { background: #1a73e8; border-color: #1a73e8; }
+  #bar .grp { display: flex; align-items: center; gap: 4px; }
+  #bar .sw { width: 20px; height: 20px; border-radius: 4px; border: 1px solid #888; cursor: pointer; padding: 0; }
+  #bar input[type=color] { width: 24px; height: 22px; border: none; padding: 0; background: none; cursor: pointer; }
+  #bar .sep { width: 1px; height: 20px; background: #555; }
+  #msg { position: absolute; left: 8px; bottom: 8px; z-index: 11; font-size: 12px; background: rgba(0,0,0,.75); color: #fff; padding: 4px 8px; border-radius: 6px; display: none; }
+  .box { position: absolute; padding: .08em .2em; line-height: 1.25; font-weight: 700; white-space: pre; cursor: move; user-select: none;
+         outline: none; border: 2px solid transparent; border-radius: 4px; min-width: 1em; }
+  .box.sel { border-color: rgba(255,255,255,.9); box-shadow: 0 0 0 1px rgba(0,0,0,.5); }
+  .box.edit { cursor: text; user-select: text; border-style: dashed; }
+  .box .t { outline: none; display: inline-block; min-width: .5em; }
+  .box .h { position: absolute; right: -9px; bottom: -9px; width: 16px; height: 16px; background: #fff; border: 2px solid #1a73e8; border-radius: 3px;
+            cursor: nwse-resize; display: none; }
+  .box.sel .h { display: block; }
+  #board:not(:hover) .box.sel { border-color: transparent; box-shadow: none; }
+  #board:not(:hover) .box .h { display: none; }
+</style>
+</head>
+<body>
+<div id="board">
+  <div id="bar">
+    <button id="add" title="文字ボックスを足す">＋文字</button>
+    <span class="sep"></span>
+    <span class="grp" title="ボード全体の背景色">背景 <span id="bgSw"></span><input type="color" id="bgPick"></span>
+    <span class="sep"></span>
+    <span class="grp" title="選んでいる文字の色">文字色 <span id="fgSw"></span><input type="color" id="fgPick"></span>
+    <span class="sep"></span>
+    <button id="del" title="選んでいる文字を消す（Deleteキーでも消せる）">🗑</button>
+    <button id="pin" title="ほかのアプリより常に手前の小窓に出す">📌 最前面</button>
+  </div>
+  <div id="msg"></div>
+</div>
+<script>
+(() => {
+  const KEY = 'addness-live-board-v1';
+  const BG = ['#1a73e8', '#111111', '#ffffff', '#ffd400', '#e53935', '#2e7d32'];
+  const FG = ['#ffffff', '#111111', '#ffd400', '#e53935', '#1a73e8'];
+  const board = document.getElementById('board');
+  const bar = document.getElementById('bar');
+  const msg = document.getElementById('msg');
+  let state = load();
+  let sel = null;   // 選んでいるボックスの要素
+  let pipWin = null;
+
+  function load() {
+    try { const s = JSON.parse(localStorage.getItem(KEY)); if (s && Array.isArray(s.boxes)) return s; } catch (e) {}
+    return { bg: '#1a73e8', boxes: [{ id: 1, text: 'いまやっていること', x: 24, y: 56, size: 40, color: '#ffffff' }] };
+  }
+  function save() { try { localStorage.setItem(KEY, JSON.stringify(state)); } catch (e) {} }
+  function find(el) { return state.boxes.find(b => String(b.id) === el.dataset.id); }
+  function say(t) { msg.textContent = t; msg.style.display = 'block'; clearTimeout(say.t); say.t = setTimeout(() => msg.style.display = 'none', 4000); }
+
+  // ---- 色の見本 ----
+  function swatches(holder, list, pick, apply) {
+    list.forEach(c => { const b = document.createElement('button'); b.className = 'sw'; b.style.background = c; b.title = c; b.onclick = () => apply(c); holder.appendChild(b); });
+    pick.oninput = () => apply(pick.value);
+  }
+  function setBg(c) { state.bg = c; board.style.setProperty('--bg', c); document.getElementById('bgPick').value = c; save(); }
+  function setFg(c) {
+    document.getElementById('fgPick').value = c;
+    if (!sel) { state.fg = c; save(); return; }
+    const b = find(sel); b.color = c; sel.style.color = c; save();
+  }
+  swatches(document.getElementById('bgSw'), BG, document.getElementById('bgPick'), setBg);
+  swatches(document.getElementById('fgSw'), FG, document.getElementById('fgPick'), setFg);
+
+  // ---- ボックス ----
+  function render(b) {
+    const el = document.createElement('div');
+    el.className = 'box'; el.dataset.id = b.id;
+    const t = document.createElement('span'); t.className = 't'; t.textContent = b.text; el.appendChild(t);
+    el.style.left = b.x + 'px'; el.style.top = b.y + 'px'; el.style.fontSize = b.size + 'px'; el.style.color = b.color;
+    const h = document.createElement('span'); h.className = 'h'; el.appendChild(h);
+    board.appendChild(el);
+    bind(el, h);
+    return el;
+  }
+
+  function select(el) {
+    if (sel && sel !== el) stopEdit(sel);
+    board.querySelectorAll('.box.sel').forEach(x => x !== el && x.classList.remove('sel'));
+    sel = el;
+    if (el) { el.classList.add('sel'); document.getElementById('fgPick').value = find(el).color; }
+  }
+  function startEdit(el) {
+    const t = el.querySelector('.t');
+    el.classList.add('edit'); t.contentEditable = 'plaintext-only';
+    if (t.contentEditable !== 'plaintext-only') t.contentEditable = 'true';
+    t.focus();
+    // 書き換えに入ったら全文を選んでおく（そのまま打てば置き換わる）
+    const doc = el.ownerDocument, r = doc.createRange(); r.selectNodeContents(t);
+    const s = doc.getSelection(); s.removeAllRanges(); s.addRange(r);
+  }
+  function stopEdit(el) {
+    if (!el.classList.contains('edit')) return;
+    const t = el.querySelector('.t');
+    el.classList.remove('edit'); t.contentEditable = 'false';
+    const b = find(el); if (!b) return;
+    b.text = t.innerText.replace(/\n$/, '');
+    save();
+  }
+
+  function bind(el, h) {
+    // 右下の角：つまんで動かすと文字の大きさが変わる
+    h.addEventListener('pointerdown', e => {
+      e.stopPropagation(); e.preventDefault(); h.setPointerCapture(e.pointerId);
+      const b = find(el), sx = e.clientX, sy = e.clientY, w0 = el.offsetWidth, h0 = el.offsetHeight, s0 = b.size;
+      const mv = ev => {
+        const k = Math.max((w0 + ev.clientX - sx) / w0, (h0 + ev.clientY - sy) / h0);
+        b.size = Math.round(Math.min(400, Math.max(10, s0 * k))); el.style.fontSize = b.size + 'px';
+      };
+      const up = () => { h.removeEventListener('pointermove', mv); h.removeEventListener('pointerup', up); save(); };
+      h.addEventListener('pointermove', mv); h.addEventListener('pointerup', up);
+    });
+    // 本体：押すと選ぶ／ドラッグで動かす／選んでいる時にもう一度押すと書き換え
+    el.addEventListener('pointerdown', e => {
+      if (el.classList.contains('edit')) return;
+      e.stopPropagation();
+      const was = sel === el; select(el);
+      const b = find(el), sx = e.clientX, sy = e.clientY, x0 = b.x, y0 = b.y; let moved = false;
+      el.setPointerCapture(e.pointerId);
+      const mv = ev => {
+        const dx = ev.clientX - sx, dy = ev.clientY - sy;
+        if (!moved && Math.abs(dx) + Math.abs(dy) < 4) return;
+        moved = true; b.x = Math.round(x0 + dx); b.y = Math.round(y0 + dy); el.style.left = b.x + 'px'; el.style.top = b.y + 'px';
+      };
+      const up = () => { el.removeEventListener('pointermove', mv); el.removeEventListener('pointerup', up); if (moved) save(); else if (was) startEdit(el); };
+      el.addEventListener('pointermove', mv); el.addEventListener('pointerup', up);
+    });
+    el.querySelector('.t').addEventListener('blur', () => stopEdit(el));
+  }
+
+  board.addEventListener('pointerdown', e => { if (e.target === board) select(null); });
+  // 書いている文字が端からはみ出すとボードごとずれて見えるので、ずれは戻す
+  board.addEventListener('scroll', () => { board.scrollLeft = 0; board.scrollTop = 0; });
+
+  document.getElementById('add').onclick = () => {
+    const id = Date.now();
+    const b = { id, text: '新しい文字', x: 24 + (state.boxes.length % 5) * 20, y: 56 + (state.boxes.length % 5) * 20, size: 32, color: state.fg || '#ffffff' };
+    state.boxes.push(b); save();
+    const el = render(b); select(el); startEdit(el);
+  };
+  function removeSel() {
+    if (!sel) return;
+    state.boxes = state.boxes.filter(b => String(b.id) !== sel.dataset.id); sel.remove(); sel = null; save();
+  }
+  document.getElementById('del').onclick = removeSel;
+  function onKey(e) {
+    if (!sel) return;
+    if (sel.classList.contains('edit')) { if (e.key === 'Escape') { stopEdit(sel); } return; }
+    if (e.key === 'Delete' || e.key === 'Backspace') { e.preventDefault(); removeSel(); }
+  }
+  document.addEventListener('keydown', onKey);
+
+  // ---- 最前面（Document Picture-in-Picture） ----
+  const pinBtn = document.getElementById('pin');
+  pinBtn.onclick = async () => {
+    if (pipWin) { pipWin.close(); return; }
+    if (!('documentPictureInPicture' in window)) { say('この機能は Chrome か Edge（パソコン版）で使えます'); return; }
+    try {
+      pipWin = await documentPictureInPicture.requestWindow({ width: Math.max(320, board.offsetWidth >> 1), height: Math.max(180, board.offsetHeight >> 1) });
+    } catch (e) { say('小窓を開けませんでした：' + e.message); return; }
+    const d = pipWin.document;
+    d.title = 'ライブ用ボード';
+    document.querySelectorAll('style').forEach(s => d.head.appendChild(s.cloneNode(true)));
+    d.body.appendChild(board);
+    d.addEventListener('keydown', onKey);
+    pinBtn.classList.add('on'); pinBtn.textContent = '📌 最前面を解除';
+    pipWin.addEventListener('pagehide', () => {
+      document.body.appendChild(board); pipWin = null;
+      pinBtn.classList.remove('on'); pinBtn.textContent = '📌 最前面';
+      showHome(false);
+    });
+    showHome(true);
+  };
+  // 小窓に移っている間、元のタブには案内だけ出す
+  const home = document.createElement('div');
+  home.style.cssText = 'display:none;padding:24px;font-size:15px;line-height:1.8';
+  home.innerHTML = 'ボードは最前面の小窓に出ています。<br>小窓を閉じるか「最前面を解除」を押すと、ここに戻ります。';
+  document.body.appendChild(home);
+  function showHome(on) { home.style.display = on ? 'block' : 'none'; }
+
+  // ---- 起動 ----
+  setBg(state.bg);
+  state.boxes.forEach(render);
+  document.getElementById('fgPick').value = state.fg || '#ffffff';
+})();
+</script>
+</body>
+</html>
