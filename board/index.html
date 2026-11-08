@@ -8,7 +8,9 @@
   ライブ用ボード（正本ゴール ba1a58bb-9f46-4bf8-9e0d-4a664d37e4d5 / 子 1d9b1b4d-39bb-49f2-84fe-cea8815df8ff）
   ライバーが自分の画面に「いま何をやっているか」を置く札。中継機には何も足さない。
   - 「＋文字」で文字ボックスを足す。ボックスを押すと選ばれ、右下の角をつまんで動かすと文字の大きさが変わる。ボックスはドラッグで動かす
-  - 選んだボックスをもう一度押すと文字を書き換えられる。消すのは🗑か Delete キー
+  - 選ぶと、そのすぐ上（上が詰まっていれば下）に小さな道具が出る：大きさ −／＋、文字色、複製、削除（2026-11-09 Canva風に。ゴール 0c03a57b）
+  - ダブルクリック（または選んだボックスをもう一度押す）で書き換え。全文が選ばれた状態で入るので、そのまま打てば置き換わる。消すのは道具の🗑か Delete キー
+  - 部品は起動時につかんでおく。document.getElementById で後から探すと、小窓に移った後は見つからず止まる（2026-11-09 ゴール 59cdc708）
   - 「最前面」で Chrome / Edge の小窓（Document Picture-in-Picture）に移る。小窓はほかのアプリより常に手前に出る
   - 中身はこのブラウザ（localStorage）に残る。外には送らない
   - 道具の帯・選んだ枠は、マウスがボードの外にある時は消える（配信に映らないように）
@@ -25,9 +27,19 @@
   #bar button:hover { background: #4a4a4a; }
   #bar button.on { background: #1a73e8; border-color: #1a73e8; }
   #bar .grp { display: flex; align-items: center; gap: 4px; }
-  #bar .sw { width: 20px; height: 20px; border-radius: 4px; border: 1px solid #888; cursor: pointer; padding: 0; }
-  #bar input[type=color] { width: 24px; height: 22px; border: none; padding: 0; background: none; cursor: pointer; }
-  #bar .sep { width: 1px; height: 20px; background: #555; }
+  .sw { width: 20px; height: 20px; border-radius: 4px; border: 1px solid #888; cursor: pointer; padding: 0; }
+  input[type=color] { width: 24px; height: 22px; border: none; padding: 0; background: none; cursor: pointer; }
+  .sep { width: 1px; height: 20px; background: #555; }
+  /* 選んだ文字のすぐ上に出る道具 */
+  #tb { position: absolute; z-index: 9; display: none; gap: 4px; align-items: center; padding: 4px 6px; background: #fff; color: #222;
+        border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,.35); font-size: 13px; white-space: nowrap; }
+  #tb.on { display: flex; }
+  #board:not(:hover) #tb { display: none; }
+  #tb button { font: inherit; color: #222; background: #f1f1f1; border: 1px solid #ccc; border-radius: 6px; padding: 2px 8px; cursor: pointer; min-width: 26px; }
+  #tb button:hover { background: #e2e2e2; }
+  #tb .sw { width: 18px; height: 18px; border-radius: 50%; }
+  #tb .sep { background: #ddd; }
+  #tbSize { min-width: 28px; text-align: center; font-variant-numeric: tabular-nums; }
   #msg { position: absolute; left: 8px; bottom: 8px; z-index: 11; font-size: 12px; background: rgba(0,0,0,.75); color: #fff; padding: 4px 8px; border-radius: 6px; display: none; }
   .box { position: absolute; padding: .08em .2em; line-height: 1.25; font-weight: 700; white-space: pre; cursor: move; user-select: none;
          outline: none; border: 2px solid transparent; border-radius: 4px; min-width: 1em; }
@@ -48,10 +60,15 @@
     <span class="sep"></span>
     <span class="grp" title="ボード全体の背景色">背景 <span id="bgSw"></span><input type="color" id="bgPick"></span>
     <span class="sep"></span>
-    <span class="grp" title="選んでいる文字の色">文字色 <span id="fgSw"></span><input type="color" id="fgPick"></span>
-    <span class="sep"></span>
-    <button id="del" title="選んでいる文字を消す（Deleteキーでも消せる）">🗑</button>
     <button id="pin" title="ほかのアプリより常に手前の小窓に出す">📌 最前面</button>
+  </div>
+  <div id="tb">
+    <button id="minus" title="文字を小さく">−</button><span id="tbSize"></span><button id="plus" title="文字を大きく">＋</button>
+    <span class="sep"></span>
+    <span id="fgSw" style="display:flex;gap:3px" title="文字の色"></span><input type="color" id="fgPick" title="ほかの色">
+    <span class="sep"></span>
+    <button id="dup" title="複製">⧉</button>
+    <button id="del" title="消す（Deleteキーでも消せる）">🗑</button>
   </div>
   <div id="msg"></div>
 </div>
@@ -66,9 +83,13 @@
   // 小窓（最前面）に移るとボードは別の文書に入り、document からは探せなくなる。最初につかんでおく
   const bgPick = document.getElementById('bgPick');
   const fgPick = document.getElementById('fgPick');
+  const tb = document.getElementById('tb');
+  const tbSize = document.getElementById('tbSize');
   let state = load();
   let sel = null;   // 選んでいるボックスの要素
   let pipWin = null;
+  let onTb = false;  // 道具の上にマウスがあるか
+  let editAt = 0;   // 書き換えに入った時刻（ダブルクリックの2打目で全選択が崩れないように使う）
 
   function load() {
     try { const s = JSON.parse(localStorage.getItem(KEY)); if (s && Array.isArray(s.boxes)) return s; } catch (e) {}
@@ -109,9 +130,28 @@
     board.querySelectorAll('.box.sel').forEach(x => x !== el && x.classList.remove('sel'));
     sel = el;
     if (el) { el.classList.add('sel'); fgPick.value = find(el).color; }
+    placeTb();
+  }
+  // 選んだ文字のすぐ上に道具を出す。上が詰まっていれば（道具の帯と重なるなら）下に出す
+  function placeTb() {
+    if (!sel || !sel.isConnected) { tb.classList.remove('on'); return; }
+    const b = find(sel); if (!b) { tb.classList.remove('on'); return; }
+    tbSize.textContent = b.size;
+    // 道具の上にマウスがある間は動かさない（＋を続けて押した時にボタンが逃げないように）。離れたら直す
+    if (onTb && tb.classList.contains('on')) return;
+    tb.classList.add('on');
+    const w = tb.offsetWidth, hh = tb.offsetHeight, W = board.clientWidth;
+    let x = Math.max(4, Math.min(b.x, W - w - 4));
+    let y = b.y - hh - 8;
+    if (y < bar.offsetHeight + 4) y = b.y + sel.offsetHeight + 8;
+    tb.style.left = x + 'px'; tb.style.top = y + 'px';
+  }
+  function setSize(el, size) {
+    const b = find(el); b.size = Math.round(Math.min(400, Math.max(10, size))); el.style.fontSize = b.size + 'px';
   }
   function startEdit(el) {
     const t = el.querySelector('.t');
+    editAt = Date.now();
     el.classList.add('edit'); t.contentEditable = 'plaintext-only';
     if (t.contentEditable !== 'plaintext-only') t.contentEditable = 'true';
     t.focus();
@@ -135,7 +175,7 @@
       const b = find(el), sx = e.clientX, sy = e.clientY, w0 = el.offsetWidth, h0 = el.offsetHeight, s0 = b.size;
       const mv = ev => {
         const k = Math.max((w0 + ev.clientX - sx) / w0, (h0 + ev.clientY - sy) / h0);
-        b.size = Math.round(Math.min(400, Math.max(10, s0 * k))); el.style.fontSize = b.size + 'px';
+        setSize(el, s0 * k); placeTb();
       };
       const up = () => { h.removeEventListener('pointermove', mv); h.removeEventListener('pointerup', up); save(); };
       h.addEventListener('pointermove', mv); h.addEventListener('pointerup', up);
@@ -150,12 +190,21 @@
       const mv = ev => {
         const dx = ev.clientX - sx, dy = ev.clientY - sy;
         if (!moved && Math.abs(dx) + Math.abs(dy) < 4) return;
-        moved = true; b.x = Math.round(x0 + dx); b.y = Math.round(y0 + dy); el.style.left = b.x + 'px'; el.style.top = b.y + 'px';
+        moved = true; b.x = Math.round(x0 + dx); b.y = Math.round(y0 + dy); el.style.left = b.x + 'px'; el.style.top = b.y + 'px'; placeTb();
       };
       const up = () => { el.removeEventListener('pointermove', mv); el.removeEventListener('pointerup', up); if (moved) save(); else if (was) startEdit(el); };
       el.addEventListener('pointermove', mv); el.addEventListener('pointerup', up);
     });
     el.querySelector('.t').addEventListener('blur', () => stopEdit(el));
+    el.querySelector('.t').addEventListener('input', placeTb);
+    // ダブルクリックで書き換え。2打目でブラウザが単語だけ選び直すので、入った直後なら全文を選び直す
+    el.addEventListener('dblclick', () => {
+      if (!el.classList.contains('edit')) { select(el); startEdit(el); return; }
+      if (Date.now() - editAt < 700) {
+        const t = el.querySelector('.t'), doc = el.ownerDocument, r = doc.createRange(); r.selectNodeContents(t);
+        const s = doc.getSelection(); s.removeAllRanges(); s.addRange(r);
+      }
+    });
   }
 
   board.addEventListener('pointerdown', e => { if (e.target === board) select(null); });
@@ -170,9 +219,23 @@
   };
   function removeSel() {
     if (!sel) return;
-    state.boxes = state.boxes.filter(b => String(b.id) !== sel.dataset.id); sel.remove(); sel = null; save();
+    state.boxes = state.boxes.filter(b => String(b.id) !== sel.dataset.id); sel.remove(); sel = null; save(); placeTb();
   }
   document.getElementById('del').onclick = removeSel;
+  document.getElementById('minus').onclick = () => { if (!sel) return; setSize(sel, find(sel).size - 4); save(); placeTb(); };
+  document.getElementById('plus').onclick = () => { if (!sel) return; setSize(sel, find(sel).size + 4); save(); placeTb(); };
+  document.getElementById('dup').onclick = () => {
+    if (!sel) return;
+    stopEdit(sel);
+    const b = { ...find(sel), id: Date.now() }; b.x += 20; b.y += 20;
+    state.boxes.push(b); save();
+    select(render(b));
+  };
+  // 道具を押しても、ボードの何もない所を押した扱い（選択が外れる）にしない
+  tb.addEventListener('pointerdown', e => e.stopPropagation());
+  tb.addEventListener('pointerenter', () => { onTb = true; });
+  tb.addEventListener('pointerleave', () => { onTb = false; placeTb(); });
+  window.addEventListener('resize', placeTb);
   function onKey(e) {
     if (!sel) return;
     if (sel.classList.contains('edit')) { if (e.key === 'Escape') { stopEdit(sel); } return; }
@@ -193,11 +256,13 @@
     document.querySelectorAll('style').forEach(s => d.head.appendChild(s.cloneNode(true)));
     d.body.appendChild(board);
     d.addEventListener('keydown', onKey);
+    pipWin.addEventListener('resize', placeTb);
+    setTimeout(placeTb, 50);
     pinBtn.classList.add('on'); pinBtn.textContent = '📌 最前面を解除';
     pipWin.addEventListener('pagehide', () => {
       document.body.appendChild(board); pipWin = null;
       pinBtn.classList.remove('on'); pinBtn.textContent = '📌 最前面';
-      showHome(false);
+      showHome(false); setTimeout(placeTb, 50);
     });
     showHome(true);
   };
