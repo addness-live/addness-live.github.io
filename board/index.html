@@ -7,12 +7,15 @@
 <!--
   ライブ用ボード（正本ゴール ba1a58bb-9f46-4bf8-9e0d-4a664d37e4d5 / 子 1d9b1b4d-39bb-49f2-84fe-cea8815df8ff）
   ライバーが自分の画面に「いま何をやっているか」を置く札。中継機には何も足さない。
-  - 右上の縦のボタン：📌最前面（解除）・＋文字・🎨背景・↻更新。マウスがボードの上にある時だけ出る（2026-11-09 上の帯が文字にかぶって邪魔なのでやめた）
+  - 右上の縦のボタン：📌最前面（解除）・＋文字・🎨背景・💾保存・↻更新。マウスがボードの上にある時だけ出る（2026-11-09 上の帯が文字にかぶって邪魔なのでやめた）
   - 「＋文字」で文字ボックスを足す。ボックスを押すと選ばれ、右下の角をつまんで動かすと文字の大きさが変わる。ボックスはドラッグで動かす
   - 選ぶと、そのすぐ上（上が詰まっていれば下）に小さな道具が出る：大きさ −／＋、太字、下線、文字色、複製、削除（2026-11-09 Canva風に。ゴール 0c03a57b）
   - ダブルクリック（または選んだボックスをもう一度押す）で書き換え。全文が選ばれた状態で入るので、そのまま打てば置き換わる。消すのは道具の🗑か Delete キー
   - 「最前面」で Chrome / Edge の小窓（Document Picture-in-Picture）を開き、その中にこのページを ?pip=1 で読み込む（iframe）。
     小窓の中の「↻更新」は中のページだけ読み直すので、小窓の位置と大きさはそのまま（2026-11-09）
+  - 太字・下線は、書き換え中に文字の一部を選んで押せばその部分だけ、選ばずに押せばボックス全体（2026-11-09）
+  - 💾保存：今のボードを①〜③に保存し、あとで読み込める。ライバーごとに自分のパソコンのブラウザに残る（2026-11-09）
+  - 色の見本の紺はアドネスのロゴの色 #141071（2026-11-09）
   - 中身はこのブラウザ（localStorage）に残る。外には送らない
   - 道具・選んだ枠は、マウスがボードの外にある時は消える（配信に映らないように）
 -->
@@ -23,14 +26,20 @@
   #board { position: relative; width: 100%; height: 100%; overflow: hidden; background: var(--bg, #1a73e8); }
   /* 右上の縦のボタン */
   #side { position: absolute; right: 6px; top: 6px; z-index: 10; display: flex; flex-direction: column; gap: 4px; align-items: stretch; transition: opacity .15s; }
-  #board:not(:hover) #side, #board:not(:hover) #bgPop { opacity: 0; pointer-events: none; }
+  #board:not(:hover) #side, #board:not(:hover) .pop { opacity: 0; pointer-events: none; }
+  #slotPop { flex-direction: column; align-items: stretch; color: #222; font-size: 12px; }
+  #slotPop .row { display: flex; gap: 4px; align-items: center; }
+  #slotPop button { font: inherit; color: #222; background: #f1f1f1; border: 1px solid #ccc; border-radius: 6px; padding: 2px 8px; cursor: pointer; }
+  #slotPop button:hover { background: #e2e2e2; }
+  #slotPop button:disabled { opacity: .35; cursor: default; }
+  #slotPop .lb { color: #666; max-width: 150px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   #side button { font: inherit; font-size: 12px; color: #fff; background: rgba(30,30,30,.85); border: 1px solid rgba(255,255,255,.25); border-radius: 6px;
                  padding: 3px 8px; cursor: pointer; white-space: nowrap; text-align: left; }
   #side button:hover { background: rgba(60,60,60,.95); }
   #side button.on { border-color: #fff; }
-  #bgPop { position: absolute; z-index: 10; display: none; gap: 4px; align-items: center; padding: 5px 6px; background: #fff; border-radius: 8px;
-           box-shadow: 0 2px 10px rgba(0,0,0,.35); }
-  #bgPop.on { display: flex; }
+  .pop { position: absolute; z-index: 10; display: none; gap: 4px; align-items: center; padding: 5px 6px; background: #fff; border-radius: 8px;
+         box-shadow: 0 2px 10px rgba(0,0,0,.35); }
+  .pop.on { display: flex; }
   .sw { width: 20px; height: 20px; border-radius: 4px; border: 1px solid #888; cursor: pointer; padding: 0; }
   input[type=color] { width: 24px; height: 22px; border: none; padding: 0; background: none; cursor: pointer; }
   .sep { width: 1px; height: 20px; background: #555; }
@@ -64,9 +73,11 @@
     <button id="pin" title="ほかのアプリより常に手前の小窓に出す">📌 最前面</button>
     <button id="add" title="文字ボックスを足す">＋ 文字</button>
     <button id="bgBtn" title="ボード全体の背景色">🎨 背景</button>
+    <button id="slotBtn" title="今のボードを保存する／保存したボードを読み込む（このパソコンのブラウザに残る）">💾 保存</button>
     <button id="reload" title="ボードを読み直す（小窓の位置と大きさはそのまま）">↻ 更新</button>
   </div>
-  <div id="bgPop"><span id="bgSw" style="display:flex;gap:4px"></span><input type="color" id="bgPick" title="ほかの色"></div>
+  <div id="slotPop" class="pop"></div>
+  <div id="bgPop" class="pop"><span id="bgSw" style="display:flex;gap:4px"></span><input type="color" id="bgPick" title="ほかの色"></div>
   <div id="tb">
     <button id="minus" title="文字を小さく">−</button><span id="tbSize"></span><button id="plus" title="文字を大きく">＋</button>
     <span class="sep"></span>
@@ -82,8 +93,10 @@
 <script>
 (() => {
   const KEY = 'addness-live-board-v1';
-  const BG = ['#1a73e8', '#111111', '#ffffff', '#ffd400', '#e53935', '#2e7d32'];
-  const FG = ['#ffffff', '#111111', '#ffd400', '#e53935', '#1a73e8'];
+  const SLOTS = 'addness-live-board-slots-v1';   // 保存①〜③
+  const ADDNESS = '#141071';   // アドネスのロゴの紺（addness.com のアイコンから取った色）
+  const BG = [ADDNESS, '#1a73e8', '#111111', '#ffffff', '#ffd400', '#e53935', '#2e7d32'];
+  const FG = ['#ffffff', ADDNESS, '#111111', '#ffd400', '#e53935', '#1a73e8'];
   const IN_PIP = new URLSearchParams(location.search).has('pip');  // 小窓の中で読み込まれた時
   const $ = id => document.getElementById(id);
   const board = $('board'), side = $('side'), msg = $('msg');
@@ -105,7 +118,7 @@
 
   // ---- 色の見本 ----
   function swatches(holder, list, pick, apply) {
-    list.forEach(c => { const b = document.createElement('button'); b.className = 'sw'; b.style.background = c; b.title = c; b.onclick = () => apply(c); holder.appendChild(b); });
+    list.forEach(c => { const b = document.createElement('button'); b.className = 'sw'; b.style.background = c; b.title = c === ADDNESS ? 'アドネスの色' : c; b.onclick = () => apply(c); holder.appendChild(b); });
     pick.oninput = () => apply(pick.value);
   }
   function setBg(c) { state.bg = c; board.style.setProperty('--bg', c); bgPick.value = c; save(); }
@@ -117,14 +130,46 @@
   swatches($('bgSw'), BG, bgPick, setBg);
   swatches($('fgSw'), FG, fgPick, setFg);
   // 背景ボタン：押すと左に色の見本が出る。もう一度押すか、ボードの何もない所を押すと閉じる
-  $('bgBtn').onclick = () => {
-    if (bgPop.classList.toggle('on')) {
-      const r = $('bgBtn').getBoundingClientRect(), br = board.getBoundingClientRect();
-      bgPop.style.top = (r.top - br.top) + 'px';
-      bgPop.style.left = Math.max(4, r.left - br.left - bgPop.offsetWidth - 6) + 'px';
-    }
-  };
-  bgPop.addEventListener('pointerdown', e => e.stopPropagation());
+  const slotPop = $('slotPop');
+  function closePops() { bgPop.classList.remove('on'); slotPop.classList.remove('on'); }
+  function openPop(btn, pop) {
+    const was = pop.classList.contains('on'); closePops();
+    if (was) return;
+    pop.classList.add('on');
+    const r = btn.getBoundingClientRect(), br = board.getBoundingClientRect();
+    pop.style.top = (r.top - br.top) + 'px';
+    pop.style.left = Math.max(4, r.left - br.left - pop.offsetWidth - 6) + 'px';
+  }
+  $('bgBtn').onclick = () => openPop($('bgBtn'), bgPop);
+  [bgPop, slotPop].forEach(p => p.addEventListener('pointerdown', e => e.stopPropagation()));
+
+  // ---- 保存①〜③：今のボードをまるごと残し、あとで読み込む。このパソコンのブラウザにだけ残る ----
+  function slots() { try { return JSON.parse(localStorage.getItem(SLOTS)) || {}; } catch (e) { return {}; } }
+  function drawSlots() {
+    const s = slots(); slotPop.innerHTML = '';
+    [1, 2, 3].forEach(n => {
+      const row = document.createElement('div'); row.className = 'row';
+      const name = document.createElement('b'); name.textContent = '①②③'[n - 1];
+      const sv = document.createElement('button'); sv.textContent = '保存';
+      const ld = document.createElement('button'); ld.textContent = '読込'; ld.disabled = !s[n];
+      const lb = document.createElement('span'); lb.className = 'lb';
+      lb.textContent = s[n] ? (s[n].label || '（文字なし）') : '空き';
+      sv.onclick = () => {
+        if (sel) stopEdit(sel);
+        const all = slots(), first = state.boxes[0];
+        all[n] = { state: JSON.parse(JSON.stringify(state)), label: first ? first.text.split('\n')[0].slice(0, 20) : '' };
+        try { localStorage.setItem(SLOTS, JSON.stringify(all)); say('「' + '①②③'[n - 1] + '」に保存しました'); } catch (e) { say('保存できませんでした'); }
+        drawSlots();
+      };
+      ld.onclick = () => {
+        const one = slots()[n]; if (!one) return;
+        state = JSON.parse(JSON.stringify(one.state)); save(); reloadState(); closePops();
+        say('「' + '①②③'[n - 1] + '」を読み込みました');
+      };
+      row.append(name, sv, ld, lb); slotPop.appendChild(row);
+    });
+  }
+  $('slotBtn').onclick = () => { drawSlots(); openPop($('slotBtn'), slotPop); };
 
   // ---- ボックス ----
   function look(el, b) {
@@ -136,7 +181,9 @@
   function render(b) {
     const el = document.createElement('div');
     el.className = 'box'; el.dataset.id = b.id;
-    const t = document.createElement('span'); t.className = 't'; t.textContent = b.text; el.appendChild(t);
+    const t = document.createElement('span'); t.className = 't';
+    if (b.html) t.innerHTML = clean(b.html); else t.textContent = b.text;
+    el.appendChild(t);
     look(el, b);
     const h = document.createElement('span'); h.className = 'h'; el.appendChild(h);
     board.appendChild(el);
@@ -173,8 +220,8 @@
   function startEdit(el) {
     const t = el.querySelector('.t');
     editAt = Date.now();
-    el.classList.add('edit'); t.contentEditable = 'plaintext-only';
-    if (t.contentEditable !== 'plaintext-only') t.contentEditable = 'true';
+    // 一部だけ太字・下線にできるよう、飾りを持てる書き方にする（貼り付けと改行は下で文字だけにしている）
+    el.classList.add('edit'); t.contentEditable = 'true';
     t.focus();
     // 書き換えに入ったら全文を選んでおく（そのまま打てば置き換わる）
     const doc = el.ownerDocument, r = doc.createRange(); r.selectNodeContents(t);
@@ -186,7 +233,31 @@
     el.classList.remove('edit'); t.contentEditable = 'false';
     const b = find(el); if (!b) return;
     b.text = t.innerText.replace(/\n$/, '');
+    b.html = clean(t.innerHTML);
     save();
+  }
+  // 残す飾りは 太字・下線・改行だけ。それ以外のタグや書式は外して文字だけにする
+  function clean(html) {
+    const tpl = document.createElement('template'); tpl.innerHTML = html;
+    const out = document.createElement('div');
+    (function walk(src, dst) {
+      src.childNodes.forEach(n => {
+        if (n.nodeType === 3) { dst.appendChild(document.createTextNode(n.nodeValue)); return; }
+        if (n.nodeType !== 1) return;
+        const tag = n.tagName;
+        if (tag === 'BR') { dst.appendChild(document.createElement('br')); return; }
+        // 太字のボックスで一部を細字にすると、ブラウザは style="font-weight: normal" を付ける。その2つの書式だけは残す
+        const fw = n.style ? n.style.fontWeight : '', td = n.style ? (n.style.textDecorationLine || '') : '';
+        let x = null;
+        if (tag === 'B' || tag === 'STRONG') x = document.createElement('b');
+        else if (tag === 'U') x = document.createElement('u');
+        else if (tag === 'SPAN' && (fw || td)) x = document.createElement('span');
+        if (x) { if (fw) x.style.fontWeight = fw; if (td) x.style.textDecorationLine = td; }
+        if (tag === 'DIV' || tag === 'P') { if (dst.childNodes.length) dst.appendChild(document.createElement('br')); }
+        walk(n, x || dst); if (x) dst.appendChild(x);
+      });
+    })(tpl.content, out);
+    return out.innerHTML;
   }
 
   function bind(el, h) {
@@ -204,7 +275,7 @@
     // 本体：押すと選ぶ／ドラッグで動かす／選んでいる時にもう一度押すと書き換え
     el.addEventListener('pointerdown', e => {
       if (el.classList.contains('edit')) return;
-      e.stopPropagation(); bgPop.classList.remove('on');
+      e.stopPropagation(); closePops();
       const was = sel === el; select(el);
       const b = find(el), sx = e.clientX, sy = e.clientY, x0 = b.x, y0 = b.y; let moved = false;
       el.setPointerCapture(e.pointerId);
@@ -218,6 +289,13 @@
     });
     el.querySelector('.t').addEventListener('blur', () => stopEdit(el));
     el.querySelector('.t').addEventListener('input', placeTb);
+    // 改行は改行だけ、貼り付けは文字だけ（よそのページの書式を持ち込まない）
+    el.querySelector('.t').addEventListener('keydown', e => {
+      if (e.key === 'Enter' && !e.isComposing) { e.preventDefault(); el.ownerDocument.execCommand('insertLineBreak'); }
+    });
+    el.querySelector('.t').addEventListener('paste', e => {
+      e.preventDefault(); el.ownerDocument.execCommand('insertText', false, e.clipboardData.getData('text/plain'));
+    });
     // ダブルクリックで書き換え。2打目でブラウザが単語だけ選び直すので、入った直後なら全文を選び直す
     el.addEventListener('dblclick', () => {
       if (!el.classList.contains('edit')) { select(el); startEdit(el); return; }
@@ -228,7 +306,7 @@
     });
   }
 
-  board.addEventListener('pointerdown', e => { if (e.target === board) { select(null); bgPop.classList.remove('on'); } });
+  board.addEventListener('pointerdown', e => { if (e.target === board) { select(null); closePops(); } });
   side.addEventListener('pointerdown', e => e.stopPropagation());
   // 書いている文字が端からはみ出すとボードごとずれて見えるので、ずれは戻す
   board.addEventListener('scroll', () => { board.scrollLeft = 0; board.scrollTop = 0; });
@@ -244,8 +322,15 @@
     state.boxes = state.boxes.filter(b => String(b.id) !== sel.dataset.id); sel.remove(); sel = null; save(); placeTb();
   }
   // 太字・下線：押すたびに入れる／外す
+  // 書き換え中に文字の一部を選んでいれば、その部分だけ。選んでいなければボックス全体
   function toggle(key, def) {
     if (!sel) return;
+    const t = sel.querySelector('.t'), doc = sel.ownerDocument, s = doc.getSelection();
+    if (sel.classList.contains('edit') && s.rangeCount && !s.isCollapsed && t.contains(s.getRangeAt(0).commonAncestorContainer)) {
+      doc.execCommand(key === 'bold' ? 'bold' : 'underline');
+      const b = find(sel); b.html = clean(t.innerHTML); save(); placeTb();
+      return;
+    }
     const b = find(sel); b[key] = !(b[key] === undefined ? def : b[key]);
     look(sel, b); save(); placeTb();
   }
@@ -263,6 +348,8 @@
   };
   // 道具を押しても、ボードの何もない所を押した扱い（選択が外れる）にしない
   tb.addEventListener('pointerdown', e => e.stopPropagation());
+  // 道具のボタンを押しても、書き換え中の文字の選択が外れないように（色の入力欄だけは普通に開く）
+  tb.addEventListener('mousedown', e => { if (e.target.tagName !== 'INPUT') e.preventDefault(); });
   tb.addEventListener('pointerenter', () => { onTb = true; });
   tb.addEventListener('pointerleave', () => { onTb = false; placeTb(); });
   window.addEventListener('resize', placeTb);
