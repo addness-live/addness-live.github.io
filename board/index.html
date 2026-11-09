@@ -7,26 +7,30 @@
 <!--
   ライブ用ボード（正本ゴール ba1a58bb-9f46-4bf8-9e0d-4a664d37e4d5 / 子 1d9b1b4d-39bb-49f2-84fe-cea8815df8ff）
   ライバーが自分の画面に「いま何をやっているか」を置く札。中継機には何も足さない。
+  - 右上の縦のボタン：📌最前面（解除）・＋文字・🎨背景・↻更新。マウスがボードの上にある時だけ出る（2026-11-09 上の帯が文字にかぶって邪魔なのでやめた）
   - 「＋文字」で文字ボックスを足す。ボックスを押すと選ばれ、右下の角をつまんで動かすと文字の大きさが変わる。ボックスはドラッグで動かす
-  - 選ぶと、そのすぐ上（上が詰まっていれば下）に小さな道具が出る：大きさ −／＋、文字色、複製、削除（2026-11-09 Canva風に。ゴール 0c03a57b）
+  - 選ぶと、そのすぐ上（上が詰まっていれば下）に小さな道具が出る：大きさ −／＋、太字、下線、文字色、複製、削除（2026-11-09 Canva風に。ゴール 0c03a57b）
   - ダブルクリック（または選んだボックスをもう一度押す）で書き換え。全文が選ばれた状態で入るので、そのまま打てば置き換わる。消すのは道具の🗑か Delete キー
-  - 部品は起動時につかんでおく。document.getElementById で後から探すと、小窓に移った後は見つからず止まる（2026-11-09 ゴール 59cdc708）
-  - 「最前面」で Chrome / Edge の小窓（Document Picture-in-Picture）に移る。小窓はほかのアプリより常に手前に出る
+  - 「最前面」で Chrome / Edge の小窓（Document Picture-in-Picture）を開き、その中にこのページを ?pip=1 で読み込む（iframe）。
+    小窓の中の「↻更新」は中のページだけ読み直すので、小窓の位置と大きさはそのまま（2026-11-09）
   - 中身はこのブラウザ（localStorage）に残る。外には送らない
-  - 道具の帯・選んだ枠は、マウスがボードの外にある時は消える（配信に映らないように）
+  - 道具・選んだ枠は、マウスがボードの外にある時は消える（配信に映らないように）
 -->
 <style>
   * { box-sizing: border-box; }
   html, body { margin: 0; height: 100%; }
   body { font-family: "Hiragino Sans", "BIZ UDPGothic", "Yu Gothic UI", "Meiryo", sans-serif; background: #222; color: #eee; }
   #board { position: relative; width: 100%; height: 100%; overflow: hidden; background: var(--bg, #1a73e8); }
-  #bar { position: absolute; left: 0; right: 0; top: 0; z-index: 10; display: flex; flex-wrap: wrap; gap: 6px; align-items: center;
-         padding: 6px 8px; background: rgba(20,20,20,.88); color: #fff; font-size: 13px; transition: opacity .15s; }
-  #board:not(:hover) #bar { opacity: 0; pointer-events: none; }
-  #bar button { font: inherit; color: #fff; background: #3a3a3a; border: 1px solid #555; border-radius: 6px; padding: 4px 10px; cursor: pointer; }
-  #bar button:hover { background: #4a4a4a; }
-  #bar button.on { background: #1a73e8; border-color: #1a73e8; }
-  #bar .grp { display: flex; align-items: center; gap: 4px; }
+  /* 右上の縦のボタン */
+  #side { position: absolute; right: 6px; top: 6px; z-index: 10; display: flex; flex-direction: column; gap: 4px; align-items: stretch; transition: opacity .15s; }
+  #board:not(:hover) #side, #board:not(:hover) #bgPop { opacity: 0; pointer-events: none; }
+  #side button { font: inherit; font-size: 12px; color: #fff; background: rgba(30,30,30,.85); border: 1px solid rgba(255,255,255,.25); border-radius: 6px;
+                 padding: 3px 8px; cursor: pointer; white-space: nowrap; text-align: left; }
+  #side button:hover { background: rgba(60,60,60,.95); }
+  #side button.on { border-color: #fff; }
+  #bgPop { position: absolute; z-index: 10; display: none; gap: 4px; align-items: center; padding: 5px 6px; background: #fff; border-radius: 8px;
+           box-shadow: 0 2px 10px rgba(0,0,0,.35); }
+  #bgPop.on { display: flex; }
   .sw { width: 20px; height: 20px; border-radius: 4px; border: 1px solid #888; cursor: pointer; padding: 0; }
   input[type=color] { width: 24px; height: 22px; border: none; padding: 0; background: none; cursor: pointer; }
   .sep { width: 1px; height: 20px; background: #555; }
@@ -37,6 +41,7 @@
   #board:not(:hover) #tb { display: none; }
   #tb button { font: inherit; color: #222; background: #f1f1f1; border: 1px solid #ccc; border-radius: 6px; padding: 2px 8px; cursor: pointer; min-width: 26px; }
   #tb button:hover { background: #e2e2e2; }
+  #tb button.on { background: #1a73e8; border-color: #1a73e8; color: #fff; }
   #tb .sw { width: 18px; height: 18px; border-radius: 50%; }
   #tb .sep { background: #ddd; }
   #tbSize { min-width: 28px; text-align: center; font-variant-numeric: tabular-nums; }
@@ -55,15 +60,17 @@
 </head>
 <body>
 <div id="board">
-  <div id="bar">
-    <button id="add" title="文字ボックスを足す">＋文字</button>
-    <span class="sep"></span>
-    <span class="grp" title="ボード全体の背景色">背景 <span id="bgSw"></span><input type="color" id="bgPick"></span>
-    <span class="sep"></span>
+  <div id="side">
     <button id="pin" title="ほかのアプリより常に手前の小窓に出す">📌 最前面</button>
+    <button id="add" title="文字ボックスを足す">＋ 文字</button>
+    <button id="bgBtn" title="ボード全体の背景色">🎨 背景</button>
+    <button id="reload" title="ボードを読み直す（小窓の位置と大きさはそのまま）">↻ 更新</button>
   </div>
+  <div id="bgPop"><span id="bgSw" style="display:flex;gap:4px"></span><input type="color" id="bgPick" title="ほかの色"></div>
   <div id="tb">
     <button id="minus" title="文字を小さく">−</button><span id="tbSize"></span><button id="plus" title="文字を大きく">＋</button>
+    <span class="sep"></span>
+    <button id="bold" title="太字／細字"><b>B</b></button><button id="und" title="下線"><u>U</u></button>
     <span class="sep"></span>
     <span id="fgSw" style="display:flex;gap:3px" title="文字の色"></span><input type="color" id="fgPick" title="ほかの色">
     <span class="sep"></span>
@@ -77,14 +84,11 @@
   const KEY = 'addness-live-board-v1';
   const BG = ['#1a73e8', '#111111', '#ffffff', '#ffd400', '#e53935', '#2e7d32'];
   const FG = ['#ffffff', '#111111', '#ffd400', '#e53935', '#1a73e8'];
-  const board = document.getElementById('board');
-  const bar = document.getElementById('bar');
-  const msg = document.getElementById('msg');
-  // 小窓（最前面）に移るとボードは別の文書に入り、document からは探せなくなる。最初につかんでおく
-  const bgPick = document.getElementById('bgPick');
-  const fgPick = document.getElementById('fgPick');
-  const tb = document.getElementById('tb');
-  const tbSize = document.getElementById('tbSize');
+  const IN_PIP = new URLSearchParams(location.search).has('pip');  // 小窓の中で読み込まれた時
+  const $ = id => document.getElementById(id);
+  const board = $('board'), side = $('side'), msg = $('msg');
+  const bgPick = $('bgPick'), bgPop = $('bgPop'), fgPick = $('fgPick'), tb = $('tb'), tbSize = $('tbSize');
+  const boldBtn = $('bold'), undBtn = $('und'), pinBtn = $('pin');
   let state = load();
   let sel = null;   // 選んでいるボックスの要素
   let pipWin = null;
@@ -93,7 +97,7 @@
 
   function load() {
     try { const s = JSON.parse(localStorage.getItem(KEY)); if (s && Array.isArray(s.boxes)) return s; } catch (e) {}
-    return { bg: '#1a73e8', boxes: [{ id: 1, text: 'いまやっていること', x: 24, y: 56, size: 40, color: '#ffffff' }] };
+    return { bg: '#1a73e8', boxes: [{ id: 1, text: 'いまやっていること', x: 24, y: 24, size: 40, color: '#ffffff' }] };
   }
   function save() { try { localStorage.setItem(KEY, JSON.stringify(state)); } catch (e) {} }
   function find(el) { return state.boxes.find(b => String(b.id) === el.dataset.id); }
@@ -110,15 +114,30 @@
     if (!sel) { state.fg = c; save(); return; }
     const b = find(sel); b.color = c; sel.style.color = c; save();
   }
-  swatches(document.getElementById('bgSw'), BG, bgPick, setBg);
-  swatches(document.getElementById('fgSw'), FG, fgPick, setFg);
+  swatches($('bgSw'), BG, bgPick, setBg);
+  swatches($('fgSw'), FG, fgPick, setFg);
+  // 背景ボタン：押すと左に色の見本が出る。もう一度押すか、ボードの何もない所を押すと閉じる
+  $('bgBtn').onclick = () => {
+    if (bgPop.classList.toggle('on')) {
+      const r = $('bgBtn').getBoundingClientRect(), br = board.getBoundingClientRect();
+      bgPop.style.top = (r.top - br.top) + 'px';
+      bgPop.style.left = Math.max(4, r.left - br.left - bgPop.offsetWidth - 6) + 'px';
+    }
+  };
+  bgPop.addEventListener('pointerdown', e => e.stopPropagation());
 
   // ---- ボックス ----
+  function look(el, b) {
+    el.style.left = b.x + 'px'; el.style.top = b.y + 'px'; el.style.fontSize = b.size + 'px'; el.style.color = b.color;
+    el.style.fontWeight = b.bold === false ? '400' : '700';   // 前からあるボックスは太字のまま
+    // 文字の span は inline-block なので、下線は外の箱ではなく span に付ける（外に付けても届かない）
+    el.querySelector('.t').style.textDecoration = b.underline ? 'underline' : 'none';
+  }
   function render(b) {
     const el = document.createElement('div');
     el.className = 'box'; el.dataset.id = b.id;
     const t = document.createElement('span'); t.className = 't'; t.textContent = b.text; el.appendChild(t);
-    el.style.left = b.x + 'px'; el.style.top = b.y + 'px'; el.style.fontSize = b.size + 'px'; el.style.color = b.color;
+    look(el, b);
     const h = document.createElement('span'); h.className = 'h'; el.appendChild(h);
     board.appendChild(el);
     bind(el, h);
@@ -132,18 +151,20 @@
     if (el) { el.classList.add('sel'); fgPick.value = find(el).color; }
     placeTb();
   }
-  // 選んだ文字のすぐ上に道具を出す。上が詰まっていれば（道具の帯と重なるなら）下に出す
+  // 選んだ文字のすぐ上に道具を出す。上が詰まっていれば下に出す
   function placeTb() {
     if (!sel || !sel.isConnected) { tb.classList.remove('on'); return; }
     const b = find(sel); if (!b) { tb.classList.remove('on'); return; }
     tbSize.textContent = b.size;
+    boldBtn.classList.toggle('on', b.bold !== false);
+    undBtn.classList.toggle('on', !!b.underline);
     // 道具の上にマウスがある間は動かさない（＋を続けて押した時にボタンが逃げないように）。離れたら直す
     if (onTb && tb.classList.contains('on')) return;
     tb.classList.add('on');
     const w = tb.offsetWidth, hh = tb.offsetHeight, W = board.clientWidth;
     let x = Math.max(4, Math.min(b.x, W - w - 4));
     let y = b.y - hh - 8;
-    if (y < bar.offsetHeight + 4) y = b.y + sel.offsetHeight + 8;
+    if (y < 4) y = b.y + sel.offsetHeight + 8;
     tb.style.left = x + 'px'; tb.style.top = y + 'px';
   }
   function setSize(el, size) {
@@ -183,7 +204,7 @@
     // 本体：押すと選ぶ／ドラッグで動かす／選んでいる時にもう一度押すと書き換え
     el.addEventListener('pointerdown', e => {
       if (el.classList.contains('edit')) return;
-      e.stopPropagation();
+      e.stopPropagation(); bgPop.classList.remove('on');
       const was = sel === el; select(el);
       const b = find(el), sx = e.clientX, sy = e.clientY, x0 = b.x, y0 = b.y; let moved = false;
       el.setPointerCapture(e.pointerId);
@@ -207,13 +228,14 @@
     });
   }
 
-  board.addEventListener('pointerdown', e => { if (e.target === board) select(null); });
+  board.addEventListener('pointerdown', e => { if (e.target === board) { select(null); bgPop.classList.remove('on'); } });
+  side.addEventListener('pointerdown', e => e.stopPropagation());
   // 書いている文字が端からはみ出すとボードごとずれて見えるので、ずれは戻す
   board.addEventListener('scroll', () => { board.scrollLeft = 0; board.scrollTop = 0; });
 
-  document.getElementById('add').onclick = () => {
-    const id = Date.now();
-    const b = { id, text: '新しい文字', x: 24 + (state.boxes.length % 5) * 20, y: 56 + (state.boxes.length % 5) * 20, size: 32, color: state.fg || '#ffffff' };
+  $('add').onclick = () => {
+    const id = Date.now(), n = state.boxes.length % 5;
+    const b = { id, text: '新しい文字', x: 24 + n * 20, y: 24 + n * 20, size: 32, color: state.fg || '#ffffff', bold: true, underline: false };
     state.boxes.push(b); save();
     const el = render(b); select(el); startEdit(el);
   };
@@ -221,10 +243,18 @@
     if (!sel) return;
     state.boxes = state.boxes.filter(b => String(b.id) !== sel.dataset.id); sel.remove(); sel = null; save(); placeTb();
   }
-  document.getElementById('del').onclick = removeSel;
-  document.getElementById('minus').onclick = () => { if (!sel) return; setSize(sel, find(sel).size - 4); save(); placeTb(); };
-  document.getElementById('plus').onclick = () => { if (!sel) return; setSize(sel, find(sel).size + 4); save(); placeTb(); };
-  document.getElementById('dup').onclick = () => {
+  // 太字・下線：押すたびに入れる／外す
+  function toggle(key, def) {
+    if (!sel) return;
+    const b = find(sel); b[key] = !(b[key] === undefined ? def : b[key]);
+    look(sel, b); save(); placeTb();
+  }
+  boldBtn.onclick = () => toggle('bold', true);
+  undBtn.onclick = () => toggle('underline', false);
+  $('del').onclick = removeSel;
+  $('minus').onclick = () => { if (!sel) return; setSize(sel, find(sel).size - 4); save(); placeTb(); };
+  $('plus').onclick = () => { if (!sel) return; setSize(sel, find(sel).size + 4); save(); placeTb(); };
+  $('dup').onclick = () => {
     if (!sel) return;
     stopEdit(sel);
     const b = { ...find(sel), id: Date.now() }; b.x += 20; b.y += 20;
@@ -236,37 +266,53 @@
   tb.addEventListener('pointerenter', () => { onTb = true; });
   tb.addEventListener('pointerleave', () => { onTb = false; placeTb(); });
   window.addEventListener('resize', placeTb);
-  function onKey(e) {
+  document.addEventListener('keydown', e => {
     if (!sel) return;
     if (sel.classList.contains('edit')) { if (e.key === 'Escape') { stopEdit(sel); } return; }
     if (e.key === 'Delete' || e.key === 'Backspace') { e.preventDefault(); removeSel(); }
-  }
-  document.addEventListener('keydown', onKey);
+  });
+
+  // ---- 更新：このページだけ読み直す（小窓の中なら、小窓は閉じずにそのまま） ----
+  // 末尾に時刻を付けて、前に読み込んだ古い版を使わないようにする
+  $('reload').onclick = () => {
+    if (sel) stopEdit(sel);
+    location.replace(location.pathname + (IN_PIP ? '?pip=1&t=' : '?t=') + Date.now());
+  };
 
   // ---- 最前面（Document Picture-in-Picture） ----
-  const pinBtn = document.getElementById('pin');
-  pinBtn.onclick = async () => {
-    if (pipWin) { pipWin.close(); return; }
-    if (!('documentPictureInPicture' in window)) { say('この機能は Chrome か Edge（パソコン版）で使えます'); return; }
-    try {
-      pipWin = await documentPictureInPicture.requestWindow({ width: Math.max(320, board.offsetWidth >> 1), height: Math.max(180, board.offsetHeight >> 1) });
-    } catch (e) { say('小窓を開けませんでした：' + e.message); return; }
-    const d = pipWin.document;
-    d.title = 'ライブ用ボード';
-    document.querySelectorAll('style').forEach(s => d.head.appendChild(s.cloneNode(true)));
-    d.body.appendChild(board);
-    d.addEventListener('keydown', onKey);
-    pipWin.addEventListener('resize', placeTb);
-    setTimeout(placeTb, 50);
-    pinBtn.classList.add('on'); pinBtn.textContent = '📌 最前面を解除';
-    pipWin.addEventListener('pagehide', () => {
-      document.body.appendChild(board); pipWin = null;
-      pinBtn.classList.remove('on'); pinBtn.textContent = '📌 最前面';
-      showHome(false); setTimeout(placeTb, 50);
-    });
-    showHome(true);
-  };
-  // 小窓に移っている間、元のタブには案内だけ出す
+  // 小窓の中には、このページを ?pip=1 で読み込む。中で「更新」しても小窓は残る
+  function reloadState() {
+    board.querySelectorAll('.box').forEach(x => x.remove()); sel = null;
+    state = load(); setBg(state.bg); state.boxes.forEach(render); placeTb();
+  }
+  if (IN_PIP) {
+    pinBtn.textContent = '📌 最前面を解除'; pinBtn.classList.add('on');
+    pinBtn.onclick = () => { if (sel) stopEdit(sel); window.parent.close(); };
+    window.focus();   // 小窓を開いてすぐの1回目の操作から、このページに文字が入るように
+  } else {
+    pinBtn.onclick = async () => {
+      if (pipWin) { pipWin.close(); return; }
+      if (!('documentPictureInPicture' in window)) { say('この機能は Chrome か Edge（パソコン版）で使えます'); return; }
+      if (sel) stopEdit(sel);
+      try {
+        pipWin = await documentPictureInPicture.requestWindow({ width: Math.max(320, board.offsetWidth >> 1), height: Math.max(180, board.offsetHeight >> 1) });
+      } catch (e) { say('小窓を開けませんでした：' + e.message); return; }
+      const d = pipWin.document;
+      d.title = 'ライブ用ボード';
+      const st = d.createElement('style');
+      st.textContent = 'html,body{margin:0;height:100%;overflow:hidden;background:#222}iframe{display:block;border:0;width:100%;height:100%}';
+      d.head.appendChild(st);
+      const f = d.createElement('iframe');
+      f.src = location.origin + location.pathname + '?pip=1&t=' + Date.now();
+      d.body.appendChild(f);
+      board.style.display = 'none'; showHome(true);
+      pipWin.addEventListener('pagehide', () => {
+        pipWin = null; board.style.display = ''; showHome(false);
+        reloadState();   // 小窓の中で変えた分を読み直す
+      });
+    };
+  }
+  // 小窓に出ている間、元のタブには案内だけ出す
   const home = document.createElement('div');
   home.style.cssText = 'display:none;padding:24px;font-size:15px;line-height:1.8';
   home.innerHTML = 'ボードは最前面の小窓に出ています。<br>小窓を閉じるか「最前面を解除」を押すと、ここに戻ります。';
