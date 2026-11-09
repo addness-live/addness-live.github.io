@@ -22,6 +22,7 @@
     波は表示する時だけ1文字ずつの span に分け、書き換え中と保存の時は元の文字に戻す
   - まとめて選ぶ：何もない所からドラッグして枠に触れたボックス／Shift＋クリックで足す・外す／⌘Aで全部。
     まとめたまま動かす・道具（大きさ±・太字・下線・色・動き・複製・削除）をまとめてかける。
+    大きさは、範囲の右下のつまみ・±のどちらも、並び（間隔）ごと拡大・縮小する（2026-11-09 高見澤さん「位置関係が固定だと拡大縮小になっていない」）
     太字・下線・動きは、1つでもかかっていなければ全部にかけ、全部にかかっていれば全部から外す（2026-11-09）
   - ⌘Z で1つ戻す、⌘⇧Z（または ⌘Y）でやり直す。書き換え中の文字の中ではブラウザの普通の取り消しが効く（2026-11-09）
   - 中身はこのブラウザ（localStorage）に残る。外には送らない
@@ -82,8 +83,11 @@
   .box.sel .h { display: block; }
   #board:not(:hover) .box.sel { border-color: transparent; box-shadow: none; }
   #board:not(:hover) .box .h { display: none; }
-  /* まとめて選んでいる時は角のつまみを出さない（大きさは道具の±で） */
+  /* まとめて選んでいる時は、1つずつの角のつまみの代わりに、全部を囲む範囲の右下に1つ出す */
   #board.multi .box .h { display: none; }
+  #gh { position: absolute; z-index: 9; width: 16px; height: 16px; background: #fff; border: 2px solid #1a73e8; border-radius: 3px; cursor: nwse-resize; display: none; }
+  #board.multi #gh { display: block; }
+  #board:not(:hover) #gh { display: none; }
   #mq { position: absolute; z-index: 8; border: 1px dashed #fff; background: rgba(255,255,255,.12); pointer-events: none; display: none; }
   /* 背景の見せ方 */
   #board.st-grad { background-image: linear-gradient(135deg, var(--bg), var(--bg2)); }
@@ -327,12 +331,40 @@
     placeTb();
   }
   function group() { return sels.filter(x => x.isConnected && find(x)); }
+  function bbox(g) {
+    const l = Math.min(...g.map(x => x.offsetLeft)), t = Math.min(...g.map(x => x.offsetTop));
+    const r = Math.max(...g.map(x => x.offsetLeft + x.offsetWidth)), b = Math.max(...g.map(x => x.offsetTop + x.offsetHeight));
+    return { l, t, r, b, w: r - l, h: b - t };
+  }
+  // まとめたものを、範囲の左上を起点に k 倍する（文字の大きさも間隔も）
+  function scaleGroup(start, k) {
+    start.items.forEach(m => {
+      m.b.size = Math.round(Math.min(400, Math.max(10, m.s0 * k)));
+      m.b.x = Math.round(start.l + (m.x0 - start.l) * k); m.b.y = Math.round(start.t + (m.y0 - start.t) * k);
+      look(m.el, m.b);
+    });
+  }
+  function groupStart(g) { const bb = bbox(g); return { ...bb, items: g.map(el => { const b = find(el); return { el, b, s0: b.size, x0: b.x, y0: b.y }; }) }; }
+  const gh = document.createElement('span'); gh.id = 'gh'; board.appendChild(gh);
+  gh.addEventListener('pointerdown', e => {
+    e.stopPropagation(); e.preventDefault(); gh.setPointerCapture(e.pointerId);
+    const g = group(); if (g.length < 2) return;
+    const st = groupStart(g), sx = e.clientX, sy = e.clientY;
+    const mv = ev => { scaleGroup(st, Math.max(.1, Math.max((st.w + ev.clientX - sx) / st.w, (st.h + ev.clientY - sy) / st.h))); placeTb(); };
+    const up = () => { gh.removeEventListener('pointermove', mv); gh.removeEventListener('pointerup', up); save(); };
+    gh.addEventListener('pointermove', mv); gh.addEventListener('pointerup', up);
+  });
+  function placeGh() {
+    const g = group(); if (g.length < 2) return;
+    const bb = bbox(g); gh.style.left = (bb.r - 7) + 'px'; gh.style.top = (bb.b - 7) + 'px';
+  }
   function toggleIn(el) { setGroup(sels.includes(el) ? sels.filter(x => x !== el) : [...sels, el]); }
   // 選んだ文字のすぐ上に道具を出す。上が詰まっていれば下に出す
   function placeTb() {
     if (!sel || !sel.isConnected) { tb.classList.remove('on'); return; }
     const b = find(sel); if (!b) { tb.classList.remove('on'); return; }
     const g = group(), bs = g.map(find);
+    placeGh();
     tbSize.textContent = b.size;
     boldBtn.classList.toggle('on', bs.every(x => x.bold !== false));
     undBtn.classList.toggle('on', bs.every(x => !!x.underline));
@@ -346,7 +378,7 @@
     const left = Math.min(...bs.map(x => x.x)), top = Math.min(...bs.map(x => x.y)), bottom = Math.max(...g.map(el => find(el).y + el.offsetHeight));
     let x = Math.max(4, Math.min(left, W - w - 4));
     let y = top - hh - 8;
-    if (y < 4) y = bottom + 8;
+    if (y < 4) y = bottom + 16;   // 下に出す時は、右下の角のつまみにかからないように少し離す
     tb.style.left = x + 'px'; tb.style.top = y + 'px';
     // 動きの列は道具の下に出す。下に余裕がなければ上に
     const up = y + hh + 44 > board.clientHeight;
@@ -541,8 +573,15 @@
   boldBtn.onclick = () => toggle('bold', true);
   undBtn.onclick = () => toggle('underline', false);
   $('del').onclick = removeSel;
-  $('minus').onclick = () => { group().forEach(el => setSize(el, find(el).size - 4)); save(); placeTb(); };
-  $('plus').onclick = () => { group().forEach(el => setSize(el, find(el).size + 4)); save(); placeTb(); };
+  // 1つなら4ずつ。まとめている時は、並びごと1割ずつ拡大・縮小
+  function step(d) {
+    const g = group(); if (!g.length) return;
+    if (g.length === 1) setSize(g[0], find(g[0]).size + d * 4);
+    else scaleGroup(groupStart(g), d > 0 ? 1.1 : 1 / 1.1);
+    save(); placeTb();
+  }
+  $('minus').onclick = () => step(-1);
+  $('plus').onclick = () => step(1);
   $('dup').onclick = () => {
     const g = group(); if (!g.length) return;
     g.forEach(stopEdit);
