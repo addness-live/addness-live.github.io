@@ -7,7 +7,8 @@
 <!--
   ライブ用ボード（正本ゴール ba1a58bb-9f46-4bf8-9e0d-4a664d37e4d5 / 子 1d9b1b4d-39bb-49f2-84fe-cea8815df8ff）
   ライバーが自分の画面に「いま何をやっているか」を置く札。中継機には何も足さない。
-  - 右上の縦のボタン：📌最前面（解除）・＋文字・🎨背景・💾保存・↻更新。マウスがボードの上にある時だけ出る（2026-11-09 上の帯が文字にかぶって邪魔なのでやめた）
+  - 右のボタンは触る頻度で3つに分ける（2026-11-09 高見澤さんと決定）。マウスがボードの上にある時だけ出る
+    右上「作る」＝＋文字を入れる・背景色（白地で目立たせる）／その下「残す」＝保存・読込／右下の隅に薄く小さく＝最前面を解除・↻更新（窓の操作でほぼ触らない）
   - 「＋文字」で文字ボックスを足す。ボックスを押すと選ばれ、右下の角をつまんで動かすと文字の大きさが変わる。ボックスはドラッグで動かす
   - 選ぶと、そのすぐ上（上が詰まっていれば下）に小さな道具が出る：大きさ −／＋、太字、下線、文字色、複製、削除（2026-11-09 Canva風に。ゴール 0c03a57b）
   - ダブルクリック（または選んだボックスをもう一度押す）で書き換え。全文が選ばれた状態で入るので、そのまま打てば置き換わる。消すのは道具の🗑か Delete キー
@@ -24,7 +25,16 @@
   html, body { margin: 0; height: 100%; }
   body { font-family: "Hiragino Sans", "BIZ UDPGothic", "Yu Gothic UI", "Meiryo", sans-serif; background: #222; color: #eee; }
   #board { position: relative; width: 100%; height: 100%; overflow: hidden; background: var(--bg, #1a73e8); }
-  /* 右上の縦のボタン */
+  /* 右上の縦のボタン（作る・残す）と、右下の隅の窓の操作 */
+  #side .lab { font-size: 11px; color: rgba(255,255,255,.85); text-shadow: 0 0 3px rgba(0,0,0,.6); text-align: right; }
+  #side .lab + button { margin-top: 0; }
+  #side .gap { height: 8px; }
+  #side button.main { background: #fff; color: #141071; border-color: #fff; font-weight: 700; }
+  #side button.main:hover { background: #e8eaf6; }
+  #win { position: absolute; right: 6px; bottom: 6px; z-index: 10; display: flex; gap: 4px; transition: opacity .15s; }
+  #board:not(:hover) #win { opacity: 0; pointer-events: none; }
+  #win button { font: inherit; font-size: 11px; color: #fff; background: rgba(30,30,30,.55); border: 1px solid rgba(255,255,255,.2); border-radius: 6px; padding: 2px 7px; cursor: pointer; }
+  #win button:hover { background: rgba(60,60,60,.9); }
   #side { position: absolute; right: 6px; top: 6px; z-index: 10; display: flex; flex-direction: column; gap: 4px; align-items: stretch; transition: opacity .15s; }
   #board:not(:hover) #side, #board:not(:hover) .pop { opacity: 0; pointer-events: none; }
   #slotPop { flex-direction: column; align-items: stretch; color: #222; font-size: 12px; }
@@ -70,11 +80,16 @@
 <body>
 <div id="board">
   <div id="side">
-    <button id="pin" title="ほかのアプリより常に手前の小窓に出す">📌 最前面</button>
-    <button id="add" title="文字ボックスを足す">＋ 文字</button>
-    <button id="bgBtn" title="ボード全体の背景色">🎨 背景</button>
-    <button id="slotBtn" title="今のボードを保存する／保存したボードを読み込む（このパソコンのブラウザに残る）">💾 保存</button>
-    <button id="reload" title="ボードを読み直す（小窓の位置と大きさはそのまま）">↻ 更新</button>
+    <span class="lab">作る</span>
+    <button id="add" class="main" title="文字ボックスを足す">＋ 文字を入れる</button>
+    <button id="bgBtn" class="main" title="ボード全体の背景色">背景色</button>
+    <span class="gap"></span>
+    <span class="lab">残す</span>
+    <button id="slotBtn" title="今のボードを保存する／保存したボードを読み込む（このパソコンのブラウザに残る）">保存・読込</button>
+  </div>
+  <div id="win">
+    <button id="pin" title="ほかのアプリより常に手前の小窓に出す">最前面</button>
+    <button id="reload" title="更新：ボードを読み直す（小窓の位置と大きさはそのまま）">↻</button>
   </div>
   <div id="slotPop" class="pop"></div>
   <div id="bgPop" class="pop"><span id="bgSw" style="display:flex;gap:4px"></span><input type="color" id="bgPick" title="ほかの色"></div>
@@ -307,7 +322,7 @@
   }
 
   board.addEventListener('pointerdown', e => { if (e.target === board) { select(null); closePops(); } });
-  side.addEventListener('pointerdown', e => e.stopPropagation());
+  [side, $('win')].forEach(x => x.addEventListener('pointerdown', e => e.stopPropagation()));
   // 書いている文字が端からはみ出すとボードごとずれて見えるので、ずれは戻す
   board.addEventListener('scroll', () => { board.scrollLeft = 0; board.scrollTop = 0; });
 
@@ -373,7 +388,7 @@
     state = load(); setBg(state.bg); state.boxes.forEach(render); placeTb();
   }
   if (IN_PIP) {
-    pinBtn.textContent = '📌 最前面を解除'; pinBtn.classList.add('on');
+    pinBtn.textContent = '最前面を解除';
     pinBtn.onclick = () => { if (sel) stopEdit(sel); window.parent.close(); };
     window.focus();   // 小窓を開いてすぐの1回目の操作から、このページに文字が入るように
   } else {
