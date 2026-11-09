@@ -17,6 +17,10 @@
   - 太字・下線は、書き換え中に文字の一部を選んで押せばその部分だけ、選ばずに押せばボックス全体（2026-11-09）
   - 💾保存：今のボードを①〜③に保存し、あとで読み込める。ライバーごとに自分のパソコンのブラウザに残る（2026-11-09）
   - 色の見本の紺はアドネスのロゴの色 #141071（2026-11-09）
+  - 背景の見せ方：一色／グラデ／動くグラデ／ドットを「背景色」の中で選ぶ。2色目は選んだ色から明るさを変えて自動で作る（2026-11-09）
+  - 文字の動き：道具の「動き」から 光る・脈打つ・跳ねる・下線・波 を選ぶ。太字と同じく、一部を選んでいればその部分だけ、選ばなければボックス全体。同じものをもう一度押すか「なし」で外れる（2026-11-09）
+    波は表示する時だけ1文字ずつの span に分け、書き換え中と保存の時は元の文字に戻す
+  - ⌘Z で1つ戻す、⌘⇧Z（または ⌘Y）でやり直す。書き換え中の文字の中ではブラウザの普通の取り消しが効く（2026-11-09）
   - 中身はこのブラウザ（localStorage）に残る。外には送らない
   - 道具・選んだ枠は、マウスがボードの外にある時は消える（配信に映らないように）
 -->
@@ -75,6 +79,33 @@
   .box.sel .h { display: block; }
   #board:not(:hover) .box.sel { border-color: transparent; box-shadow: none; }
   #board:not(:hover) .box .h { display: none; }
+  /* 背景の見せ方 */
+  #board.st-grad { background-image: linear-gradient(135deg, var(--bg), var(--bg2)); }
+  #board.st-flow { background-image: linear-gradient(120deg, var(--bg), var(--bg2), var(--bg3), var(--bg)); background-size: 300% 300%; animation: bgFlow 12s ease-in-out infinite alternate; }
+  #board.st-dot { background-image: radial-gradient(var(--dot) 1.3px, transparent 1.5px); background-size: 16px 16px; }
+  @keyframes bgFlow { from { background-position: 0% 50%; } to { background-position: 100% 50%; } }
+  #bgPop { flex-direction: column; align-items: stretch; }
+  #bgPop .row { display: flex; gap: 4px; align-items: center; }
+  #bgSt button, #fxRow button { font: inherit; font-size: 12px; color: #222; background: #f1f1f1; border: 1px solid #ccc; border-radius: 6px; padding: 2px 8px; cursor: pointer; }
+  #bgSt button:hover, #fxRow button:hover { background: #e2e2e2; }
+  #bgSt button.on, #fxRow button.on { background: #1a73e8; border-color: #1a73e8; color: #fff; }
+  /* 文字の動き（道具の「動き」から） */
+  #fxRow { position: absolute; left: 0; top: calc(100% + 4px); display: none; gap: 4px; padding: 4px 6px; background: #fff; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,.35); }
+  #fxRow.on { display: flex; }
+  .fx-shine { background-image: linear-gradient(100deg, var(--c) 40%, color-mix(in srgb, var(--c), #7fd0ff 75%) 50%, var(--c) 60%); background-size: 200% 100%;
+              -webkit-background-clip: text; background-clip: text; color: transparent; text-decoration-color: var(--c); animation: fxShine 2.6s linear infinite; }
+  .fx-pulse { display: inline-block; animation: fxPulse 1.6s ease-in-out infinite; }
+  .fx-hop { display: inline-block; animation: fxHop 2s ease-in-out infinite; }
+  .fx-line { background-image: linear-gradient(#ffd84d, #ffd84d); background-repeat: no-repeat; background-position: left bottom; background-size: 0% .12em; animation: fxLine 2.4s ease-out infinite; }
+  .wc { display: inline-block; animation: fxWave 1.6s ease-in-out infinite; animation-delay: calc(var(--i) * .08s); }
+  /* 光るの中に、波・脈打つ・跳ねる（1つの塊で動くもの）が入ると光が届かず文字が消えるので、その部分は普通の色で見せる */
+  .fx-shine .wc, .fx-shine .fx-pulse, .fx-shine .fx-hop, .fx-pulse.fx-shine, .fx-hop.fx-shine { color: var(--c); }
+  .box.edit .t, .box.edit .t * { animation: none !important; }
+  @keyframes fxShine { 0% { background-position: 120% 0; } 60%, 100% { background-position: -120% 0; } }
+  @keyframes fxPulse { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.08); } }
+  @keyframes fxHop { 0%, 70%, 100% { transform: translateY(0); } 80% { transform: translateY(-.2em); } 90% { transform: translateY(0); } }
+  @keyframes fxLine { 0% { background-size: 0% .12em; } 50%, 100% { background-size: 100% .12em; } }
+  @keyframes fxWave { 0%, 60%, 100% { transform: translateY(0); } 30% { transform: translateY(-.18em); } }
 </style>
 </head>
 <body>
@@ -92,11 +123,15 @@
     <button id="reload" title="更新：ボードを読み直す（小窓の位置と大きさはそのまま）">↻</button>
   </div>
   <div id="slotPop" class="pop"></div>
-  <div id="bgPop" class="pop"><span id="bgSw" style="display:flex;gap:4px"></span><input type="color" id="bgPick" title="ほかの色"></div>
+  <div id="bgPop" class="pop">
+    <div class="row"><span id="bgSw" style="display:flex;gap:4px"></span><input type="color" id="bgPick" title="ほかの色"></div>
+    <div class="row" id="bgSt"><button data-st="">一色</button><button data-st="grad">グラデ</button><button data-st="flow">動くグラデ</button><button data-st="dot">ドット</button></div>
+  </div>
   <div id="tb">
     <button id="minus" title="文字を小さく">−</button><span id="tbSize"></span><button id="plus" title="文字を大きく">＋</button>
     <span class="sep"></span>
-    <button id="bold" title="太字／細字"><b>B</b></button><button id="und" title="下線"><u>U</u></button>
+    <button id="bold" title="太字／細字"><b>B</b></button><button id="und" title="下線"><u>U</u></button><button id="fxBtn" title="文字の動き（一部を選んでいればその部分だけ）">動き</button>
+    <div id="fxRow"><button data-fx="shine">光る</button><button data-fx="pulse">脈打つ</button><button data-fx="hop">跳ねる</button><button data-fx="line">下線</button><button data-fx="wave">波</button><button data-fx="none">なし</button></div>
     <span class="sep"></span>
     <span id="fgSw" style="display:flex;gap:3px" title="文字の色"></span><input type="color" id="fgPick" title="ほかの色">
     <span class="sep"></span>
@@ -116,7 +151,9 @@
   const $ = id => document.getElementById(id);
   const board = $('board'), side = $('side'), msg = $('msg');
   const bgPick = $('bgPick'), bgPop = $('bgPop'), fgPick = $('fgPick'), tb = $('tb'), tbSize = $('tbSize');
-  const boldBtn = $('bold'), undBtn = $('und'), pinBtn = $('pin');
+  const boldBtn = $('bold'), undBtn = $('und'), pinBtn = $('pin'), fxRow = $('fxRow');
+  // ⌘Z 用の履歴：変えるたびにボード全体を文字にして積む。短い間の続けての変更（色を選び続ける等）は1つにまとめる
+  let hist = [], hi = -1, lastRec = 0;
   let state = load();
   let sel = null;   // 選んでいるボックスの要素
   let pipWin = null;
@@ -127,7 +164,22 @@
     try { const s = JSON.parse(localStorage.getItem(KEY)); if (s && Array.isArray(s.boxes)) return s; } catch (e) {}
     return { bg: '#1a73e8', boxes: [{ id: 1, text: 'いまやっていること', x: 24, y: 24, size: 40, color: '#ffffff' }] };
   }
-  function save() { try { localStorage.setItem(KEY, JSON.stringify(state)); } catch (e) {} }
+  function save() { try { localStorage.setItem(KEY, JSON.stringify(state)); } catch (e) {} record(); }
+  function record() {
+    const s = JSON.stringify(state); if (s === hist[hi]) return;
+    hist = hist.slice(0, hi + 1);
+    const now = Date.now();
+    if (hi > 0 && now - lastRec < 400) hist[hi] = s; else { hist.push(s); hi++; }
+    if (hist.length > 100) { hist.shift(); hi--; }
+    lastRec = now;
+  }
+  function restore(s) {
+    state = JSON.parse(s); try { localStorage.setItem(KEY, s); } catch (e) {}
+    board.querySelectorAll('.box').forEach(x => x.remove()); sel = null;
+    applyBg(); state.boxes.forEach(render); placeTb();
+  }
+  function undo() { if (hi > 0) { hi--; lastRec = 0; restore(hist[hi]); } }
+  function redo() { if (hi < hist.length - 1) { hi++; lastRec = 0; restore(hist[hi]); } }
   function find(el) { return state.boxes.find(b => String(b.id) === el.dataset.id); }
   function say(t) { msg.textContent = t; msg.style.display = 'block'; clearTimeout(say.t); say.t = setTimeout(() => msg.style.display = 'none', 4000); }
 
@@ -136,11 +188,35 @@
     list.forEach(c => { const b = document.createElement('button'); b.className = 'sw'; b.style.background = c; b.title = c === ADDNESS ? 'アドネスの色' : c; b.onclick = () => apply(c); holder.appendChild(b); });
     pick.oninput = () => apply(pick.value);
   }
-  function setBg(c) { state.bg = c; board.style.setProperty('--bg', c); bgPick.value = c; save(); }
+  // 背景：選んだ色と、そこから明るさを変えた2色目・色味をずらした3色目で、グラデやドットを作る
+  function hex2hsl(h) {
+    h = String(h).replace('#', ''); if (h.length === 3) h = h.split('').map(x => x + x).join('');
+    const r = parseInt(h.slice(0, 2), 16) / 255, g = parseInt(h.slice(2, 4), 16) / 255, b = parseInt(h.slice(4, 6), 16) / 255;
+    const mx = Math.max(r, g, b), mn = Math.min(r, g, b), L = (mx + mn) / 2; let H = 0, S = 0;
+    if (mx !== mn) {
+      const d = mx - mn; S = L > .5 ? d / (2 - mx - mn) : d / (mx + mn);
+      H = (mx === r ? (g - b) / d + (g < b ? 6 : 0) : mx === g ? (b - r) / d + 2 : (r - g) / d + 4) * 60;
+    }
+    return [H, S, L];
+  }
+  const hsl = (H, S, L) => `hsl(${Math.round(H)} ${Math.round(S * 100)}% ${Math.round(L * 100)}%)`;
+  function applyBg() {
+    const c = state.bg, [H, S, L] = hex2hsl(c), L2 = L > .65 ? L - .16 : Math.min(.68, L + .22);
+    board.style.setProperty('--bg', c);
+    board.style.setProperty('--bg2', hsl(H, S, L2));
+    board.style.setProperty('--bg3', hsl(H + 40, S, L2));
+    board.style.setProperty('--dot', L > .6 ? 'rgba(0,0,0,.14)' : 'rgba(255,255,255,.18)');
+    board.classList.remove('st-grad', 'st-flow', 'st-dot');
+    if (state.bgStyle) board.classList.add('st-' + state.bgStyle);
+    bgPick.value = c;
+    $('bgSt').querySelectorAll('button').forEach(x => x.classList.toggle('on', x.dataset.st === (state.bgStyle || '')));
+  }
+  function setBg(c) { state.bg = c; applyBg(); save(); }
+  $('bgSt').querySelectorAll('button').forEach(x => x.onclick = () => { state.bgStyle = x.dataset.st || null; applyBg(); save(); });
   function setFg(c) {
     fgPick.value = c;
     if (!sel) { state.fg = c; save(); return; }
-    const b = find(sel); b.color = c; sel.style.color = c; save();
+    const b = find(sel); b.color = c; sel.style.color = c; sel.style.setProperty('--c', c); save();
   }
   swatches($('bgSw'), BG, bgPick, setBg);
   swatches($('fgSw'), FG, fgPick, setFg);
@@ -191,7 +267,34 @@
     el.style.left = b.x + 'px'; el.style.top = b.y + 'px'; el.style.fontSize = b.size + 'px'; el.style.color = b.color;
     el.style.fontWeight = b.bold === false ? '400' : '700';   // 前からあるボックスは太字のまま
     // 文字の span は inline-block なので、下線は外の箱ではなく span に付ける（外に付けても届かない）
-    el.querySelector('.t').style.textDecoration = b.underline ? 'underline' : 'none';
+    const t = el.querySelector('.t');
+    t.style.textDecoration = b.underline ? 'underline' : 'none';
+    el.style.setProperty('--c', b.color);
+    t.className = 't' + (b.fx ? ' fx-' + b.fx : '');
+    if (!el.classList.contains('edit')) waveify(t);
+  }
+  // ---- 文字の動き ----
+  const FX = ['shine', 'pulse', 'hop', 'line', 'wave'];
+  const fxOf = n => n.classList && FX.find(f => n.classList.contains('fx-' + f));
+  function unwrap(n) { while (n.firstChild) n.parentNode.insertBefore(n.firstChild, n); n.remove(); }
+  function unwave(t) { t.querySelectorAll('.wc').forEach(unwrap); t.normalize(); }
+  // 波：1文字ずつ span に分けて、少しずつ遅らせて動かす（表示する時だけ）
+  function waveify(t) {
+    unwave(t);
+    const hosts = [...t.querySelectorAll('.fx-wave')]; if (t.classList.contains('fx-wave')) hosts.unshift(t);
+    hosts.forEach(h => {
+      let i = 0; const w = document.createTreeWalker(h, NodeFilter.SHOW_TEXT), nodes = [];
+      while (w.nextNode()) nodes.push(w.currentNode);
+      nodes.forEach(n => {
+        if (n.parentNode.closest('.wc')) return;
+        const f = document.createDocumentFragment();
+        for (const ch of n.nodeValue) {
+          if (ch === '\n') { f.appendChild(document.createTextNode(ch)); continue; }
+          const s = document.createElement('span'); s.className = 'wc'; s.style.setProperty('--i', i++); s.textContent = ch; f.appendChild(s);
+        }
+        n.replaceWith(f);
+      });
+    });
   }
   function render(b) {
     const el = document.createElement('div');
@@ -220,6 +323,8 @@
     tbSize.textContent = b.size;
     boldBtn.classList.toggle('on', b.bold !== false);
     undBtn.classList.toggle('on', !!b.underline);
+    fxRow.querySelectorAll('button').forEach(x => x.classList.toggle('on', x.dataset.fx === b.fx));
+    $('fxBtn').classList.toggle('on', fxRow.classList.contains('on'));
     // 道具の上にマウスがある間は動かさない（＋を続けて押した時にボタンが逃げないように）。離れたら直す
     if (onTb && tb.classList.contains('on')) return;
     tb.classList.add('on');
@@ -228,6 +333,9 @@
     let y = b.y - hh - 8;
     if (y < 4) y = b.y + sel.offsetHeight + 8;
     tb.style.left = x + 'px'; tb.style.top = y + 'px';
+    // 動きの列は道具の下に出す。下に余裕がなければ上に
+    const up = y + hh + 44 > board.clientHeight;
+    fxRow.style.top = up ? 'auto' : 'calc(100% + 4px)'; fxRow.style.bottom = up ? 'calc(100% + 4px)' : 'auto';
   }
   function setSize(el, size) {
     const b = find(el); b.size = Math.round(Math.min(400, Math.max(10, size))); el.style.fontSize = b.size + 'px';
@@ -236,6 +344,7 @@
     const t = el.querySelector('.t');
     editAt = Date.now();
     // 一部だけ太字・下線にできるよう、飾りを持てる書き方にする（貼り付けと改行は下で文字だけにしている）
+    unwave(t);   // 書き換え中は波の1文字ずつの span を外して、普通の文字に戻す
     el.classList.add('edit'); t.contentEditable = 'true';
     t.focus();
     // 書き換えに入ったら全文を選んでおく（そのまま打てば置き換わる）
@@ -249,6 +358,7 @@
     const b = find(el); if (!b) return;
     b.text = t.innerText.replace(/\n$/, '');
     b.html = clean(t.innerHTML);
+    waveify(t);
     save();
   }
   // 残す飾りは 太字・下線・改行だけ。それ以外のタグや書式は外して文字だけにする
@@ -266,8 +376,8 @@
         let x = null;
         if (tag === 'B' || tag === 'STRONG') x = document.createElement('b');
         else if (tag === 'U') x = document.createElement('u');
-        else if (tag === 'SPAN' && (fw || td)) x = document.createElement('span');
-        if (x) { if (fw) x.style.fontWeight = fw; if (td) x.style.textDecorationLine = td; }
+        else if (tag === 'SPAN' && (fw || td || fxOf(n))) x = document.createElement('span');
+        if (x) { if (fw) x.style.fontWeight = fw; if (td) x.style.textDecorationLine = td; if (fxOf(n)) x.className = 'fx-' + fxOf(n); }
         if (tag === 'DIV' || tag === 'P') { if (dst.childNodes.length) dst.appendChild(document.createElement('br')); }
         walk(n, x || dst); if (x) dst.appendChild(x);
       });
@@ -349,6 +459,35 @@
     const b = find(sel); b[key] = !(b[key] === undefined ? def : b[key]);
     look(sel, b); save(); placeTb();
   }
+  // 文字の動き：一部を選んでいればその部分だけ、選んでいなければボックス全体。同じものをもう一度押すと外れる
+  function applyFx(name) {
+    if (!sel) return;
+    const t = sel.querySelector('.t'), s = document.getSelection(), b = find(sel);
+    if (sel.classList.contains('edit') && s.rangeCount && !s.isCollapsed && t.contains(s.getRangeAt(0).commonAncestorContainer)) {
+      const r = s.getRangeAt(0);
+      let host = r.commonAncestorContainer; if (host.nodeType === 3) host = host.parentNode;
+      while (host && host !== t && !fxOf(host)) host = host.parentNode;
+      if (host && host !== t && (name === 'none' || fxOf(host) === name)) unwrap(host);
+      else {
+        const frag = r.extractContents();
+        frag.querySelectorAll('span').forEach(x => { if (fxOf(x)) unwrap(x); });
+        let put = frag;
+        if (name !== 'none') { put = document.createElement('span'); put.className = 'fx-' + name; put.appendChild(frag); }
+        const last = put.nodeType === 11 ? null : put;
+        r.insertNode(put);
+        if (last) { const nr = document.createRange(); nr.selectNodeContents(last); s.removeAllRanges(); s.addRange(nr); }
+      }
+      t.normalize(); b.html = clean(t.innerHTML); save(); placeTb();
+      return;
+    }
+    if (name === 'none') {
+      unwave(t); t.querySelectorAll('span').forEach(x => { if (fxOf(x)) unwrap(x); });
+      b.fx = null; b.html = clean(t.innerHTML);
+    } else b.fx = b.fx === name ? null : name;
+    look(sel, b); save(); placeTb();
+  }
+  $('fxBtn').onclick = () => { fxRow.classList.toggle('on'); placeTb(); };
+  fxRow.querySelectorAll('button').forEach(x => x.onclick = () => applyFx(x.dataset.fx));
   boldBtn.onclick = () => toggle('bold', true);
   undBtn.onclick = () => toggle('underline', false);
   $('del').onclick = removeSel;
@@ -369,8 +508,13 @@
   tb.addEventListener('pointerleave', () => { onTb = false; placeTb(); });
   window.addEventListener('resize', placeTb);
   document.addEventListener('keydown', e => {
+    const editing = sel && sel.classList.contains('edit');
+    // ⌘Z で戻す・⌘⇧Z／⌘Y でやり直す（書き換え中の文字の中ではブラウザの普通の取り消しに任せる）
+    if ((e.metaKey || e.ctrlKey) && !editing && e.target.tagName !== 'INPUT' && /^[zy]$/i.test(e.key)) {
+      e.preventDefault(); if (e.key.toLowerCase() === 'y' || e.shiftKey) redo(); else undo(); return;
+    }
     if (!sel) return;
-    if (sel.classList.contains('edit')) { if (e.key === 'Escape') { stopEdit(sel); } return; }
+    if (editing) { if (e.key === 'Escape') { stopEdit(sel); } return; }
     if (e.key === 'Delete' || e.key === 'Backspace') { e.preventDefault(); removeSel(); }
   });
 
@@ -385,7 +529,7 @@
   // 小窓の中には、このページを ?pip=1 で読み込む。中で「更新」しても小窓は残る
   function reloadState() {
     board.querySelectorAll('.box').forEach(x => x.remove()); sel = null;
-    state = load(); setBg(state.bg); state.boxes.forEach(render); placeTb();
+    state = load(); applyBg(); state.boxes.forEach(render); placeTb(); record();
   }
   if (IN_PIP) {
     pinBtn.textContent = '最前面を解除';
@@ -422,8 +566,9 @@
   function showHome(on) { home.style.display = on ? 'block' : 'none'; }
 
   // ---- 起動 ----
-  setBg(state.bg);
+  applyBg();
   state.boxes.forEach(render);
+  record();
   fgPick.value = state.fg || '#ffffff';
 })();
 </script>
