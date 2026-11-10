@@ -27,8 +27,10 @@
   - ⌘Z で1つ戻す、⌘⇧Z（または ⌘Y）でやり直す。書き換え中の文字の中ではブラウザの普通の取り消しが効く（2026-11-09）
   - ⌘C で選んだボックス（まとめて選んでいれば全部）を写し、⌘V で少しずらして同じボックスを出す。続けて押すとさらにずれる。
     写したものはこのブラウザに置くので、小窓と元のページの間でも貼れる。書き換え中の文字の中は普通の文字のコピー・貼り付け（2026-11-10 高見澤さん）
-  - 2本指スクロール（マウスはホイール、Shift＋ホイールで横）で、ボックス全部をまとめて上下左右に動かす。窓を小さくしても、外に出たボックスを
-    窓を広げずに引き寄せられる。⌘Z で戻せる（2026-11-10 高見澤さん。案B「窓に合わせて全体を縮める」は文字が小さくなるので採らなかった）
+  - のぞく窓：ボックスは #world の中に置き、#world ごと位置と倍率を変えて見る所を動かす（ボックスの位置は変えない・⌘Z の履歴に入れない）。
+    2本指スクロール（マウスはホイール、Shift＋ホイールで横）で動かし、ピンチ（マウスは ⌘＋ホイール）で 25%〜200%。右下の「⌂ 100%」で左上・100%に戻る。
+    動ける範囲は「書いた物と原点を囲む範囲＋窓1枚分」までで、書いた物が窓の端に少し残る＝見失わない。窓の位置と倍率はブラウザに別に覚える
+    （2026-11-10 高見澤さん。最初はボックス自体を動かす作りだったが、範囲が無限で中心が分からず、拡大縮小を足すと文字の大きさまで書き換わるので作り直した）
   - 中身はこのブラウザ（localStorage）に残る。外には送らない
   - 道具・選んだ枠は、マウスがボードの外にある時は消える（配信に映らないように）
 -->
@@ -92,6 +94,8 @@
   #gh { position: absolute; z-index: 9; width: 16px; height: 16px; background: #fff; border: 2px solid #1a73e8; border-radius: 3px; cursor: nwse-resize; display: none; }
   #board.multi #gh { display: block; }
   #board:not(:hover) #gh { display: none; }
+  /* ボックスはすべて #world の中に置き、#world ごと位置と倍率を変えて「のぞく窓」を動かす（ボックスの位置そのものは変えない） */
+  #world { position: absolute; left: 0; top: 0; width: 0; height: 0; transform-origin: 0 0; }
   #mq { position: absolute; z-index: 8; border: 1px dashed #fff; background: rgba(255,255,255,.12); pointer-events: none; display: none; }
   /* 背景の見せ方 */
   #board.st-grad { background-image: linear-gradient(135deg, var(--bg), var(--bg2)); }
@@ -133,6 +137,7 @@
     <button id="slotBtn" title="今のボードを保存する／保存したボードを読み込む（このパソコンのブラウザに残る）">保存・読込</button>
   </div>
   <div id="win">
+    <button id="home" title="左上・100%に戻る（2本指で動かす・ピンチで拡大縮小した後に）">⌂ 100%</button>
     <button id="pin" title="ほかのアプリより常に手前の小窓に出す">最前面</button>
     <button id="reload" title="更新：ボードを読み直す（小窓の位置と大きさはそのまま）">↻</button>
   </div>
@@ -164,6 +169,10 @@
   const IN_PIP = new URLSearchParams(location.search).has('pip');  // 小窓の中で読み込まれた時
   const $ = id => document.getElementById(id);
   const board = $('board'), side = $('side'), msg = $('msg');
+  // のぞく窓：ボード上の点 (x, y) は画面の (x * view.z + view.x, y * view.z + view.y) に出る。⌘Z の履歴には入れず、別に覚えておく
+  const VIEW = 'addness-live-board-view-v1';
+  const world = document.createElement('div'); world.id = 'world'; board.prepend(world);
+  let view = (() => { try { const v = JSON.parse(localStorage.getItem(VIEW)); if (v && isFinite(v.x) && isFinite(v.y) && v.z > 0) return v; } catch (e) {} return { x: 0, y: 0, z: 1 }; })();
   const bgPick = $('bgPick'), bgPop = $('bgPop'), fgPick = $('fgPick'), tb = $('tb'), tbSize = $('tbSize');
   const boldBtn = $('bold'), undBtn = $('und'), pinBtn = $('pin'), fxRow = $('fxRow');
   // ⌘Z 用の履歴：変えるたびにボード全体を文字にして積む。短い間の続けての変更（色を選び続ける等）は1つにまとめる
@@ -319,7 +328,7 @@
     el.appendChild(t);
     look(el, b);
     const h = document.createElement('span'); h.className = 'h'; el.appendChild(h);
-    board.appendChild(el);
+    world.appendChild(el);
     bind(el, h);
     return el;
   }
@@ -354,14 +363,17 @@
     e.stopPropagation(); e.preventDefault(); gh.setPointerCapture(e.pointerId);
     const g = group(); if (g.length < 2) return;
     const st = groupStart(g), sx = e.clientX, sy = e.clientY;
-    const mv = ev => { scaleGroup(st, Math.max(.1, Math.max((st.w + ev.clientX - sx) / st.w, (st.h + ev.clientY - sy) / st.h))); placeTb(); };
+    const mv = ev => { scaleGroup(st, Math.max(.1, Math.max((st.w + (ev.clientX - sx) / view.z) / st.w, (st.h + (ev.clientY - sy) / view.z) / st.h))); placeTb(); };
     const up = () => { gh.removeEventListener('pointermove', mv); gh.removeEventListener('pointerup', up); save(); };
     gh.addEventListener('pointermove', mv); gh.addEventListener('pointerup', up);
   });
   function placeGh() {
     const g = group(); if (g.length < 2) return;
-    const bb = bbox(g); gh.style.left = (bb.r - 7) + 'px'; gh.style.top = (bb.b - 7) + 'px';
+    const bb = bbox(g); gh.style.left = (scrX(bb.r) - 7) + 'px'; gh.style.top = (scrY(bb.b) - 7) + 'px';
   }
+  // ボード上の位置 → 画面（#board の中）の位置
+  function scrX(x) { return x * view.z + view.x; }
+  function scrY(y) { return y * view.z + view.y; }
   function toggleIn(el) { setGroup(sels.includes(el) ? sels.filter(x => x !== el) : [...sels, el]); }
   // 選んだ文字のすぐ上に道具を出す。上が詰まっていれば下に出す
   function placeTb() {
@@ -379,7 +391,7 @@
     tb.classList.add('on');
     const w = tb.offsetWidth, hh = tb.offsetHeight, W = board.clientWidth;
     // まとめて選んでいる時は、全部を囲む範囲の上に出す
-    const left = Math.min(...bs.map(x => x.x)), top = Math.min(...bs.map(x => x.y)), bottom = Math.max(...g.map(el => find(el).y + el.offsetHeight));
+    const left = scrX(Math.min(...bs.map(x => x.x))), top = scrY(Math.min(...bs.map(x => x.y))), bottom = scrY(Math.max(...g.map(el => find(el).y + el.offsetHeight)));
     let x = Math.max(4, Math.min(left, W - w - 4));
     let y = top - hh - 8;
     if (y < 4) y = bottom + 16;   // 下に出す時は、右下の角のつまみにかからないように少し離す
@@ -442,7 +454,7 @@
       e.stopPropagation(); e.preventDefault(); h.setPointerCapture(e.pointerId);
       const b = find(el), sx = e.clientX, sy = e.clientY, w0 = el.offsetWidth, h0 = el.offsetHeight, s0 = b.size;
       const mv = ev => {
-        const k = Math.max((w0 + ev.clientX - sx) / w0, (h0 + ev.clientY - sy) / h0);
+        const k = Math.max((w0 + (ev.clientX - sx) / view.z) / w0, (h0 + (ev.clientY - sy) / view.z) / h0);
         setSize(el, s0 * k); placeTb();
       };
       const up = () => { h.removeEventListener('pointermove', mv); h.removeEventListener('pointerup', up); save(); };
@@ -459,8 +471,8 @@
       const sx = e.clientX, sy = e.clientY, moving = group().map(x => ({ el: x, b: find(x), x0: find(x).x, y0: find(x).y })); let moved = false;
       el.setPointerCapture(e.pointerId);
       const mv = ev => {
-        const dx = ev.clientX - sx, dy = ev.clientY - sy;
-        if (!moved && Math.abs(dx) + Math.abs(dy) < 4) return;
+        const dx = (ev.clientX - sx) / view.z, dy = (ev.clientY - sy) / view.z;
+        if (!moved && Math.abs(ev.clientX - sx) + Math.abs(ev.clientY - sy) < 4) return;
         moved = true;
         moving.forEach(m => { m.b.x = Math.round(m.x0 + dx); m.b.y = Math.round(m.y0 + dy); m.el.style.left = m.b.x + 'px'; m.el.style.top = m.b.y + 'px'; });
         placeTb();
@@ -506,7 +518,8 @@
       board.removeEventListener('pointermove', mv); board.removeEventListener('pointerup', up); mq.style.display = 'none';
       if (!moved) { if (!e.shiftKey) select(null); return; }
       const q = rect(ev), hits = [...board.querySelectorAll('.box')].filter(x => {
-        const l = x.offsetLeft, t = x.offsetTop; return l < q.r && l + x.offsetWidth > q.l && t < q.b && t + x.offsetHeight > q.t;
+        const l = scrX(x.offsetLeft), t = scrY(x.offsetTop), w = x.offsetWidth * view.z, h = x.offsetHeight * view.z;
+        return l < q.r && l + w > q.l && t < q.b && t + h > q.t;
       });
       setGroup([...keep, ...hits.filter(x => !keep.includes(x))]);
     };
@@ -518,7 +531,8 @@
 
   $('add').onclick = () => {
     const id = Date.now(), n = state.boxes.length % 5;
-    const b = { id, text: '新しい文字', x: 24 + n * 20, y: 24 + n * 20, size: 32, color: state.fg || '#ffffff', bold: true, underline: false };
+    // 今のぞいている所の左上あたりに出す（窓を動かしていても見える所に出るように）
+    const b = { id, text: '新しい文字', x: Math.round((24 + n * 20 - view.x) / view.z), y: Math.round((24 + n * 20 - view.y) / view.z), size: 32, color: state.fg || '#ffffff', bold: true, underline: false };
     state.boxes.push(b); save();
     const el = render(b); select(el); startEdit(el);
   };
@@ -613,20 +627,45 @@
     const made = list.map(src => { const b = { ...src, id: id++ }; b.x += 20 * pasteN; b.y += 20 * pasteN; state.boxes.push(b); return render(b); });
     save(); setGroup(made);
   }
-  // ---- ボードの中身を動かす：2本指スクロール（マウスはホイール、Shift＋ホイールで横）でボックス全部をまとめて動かす ----
-  // 窓を小さくしても、外に出たボックスを窓の中へ引き寄せられるように（2026-11-10 高見澤さん）。⌘Z で戻せる
+  // ---- のぞく窓を動かす・拡大縮小する（2026-11-10 高見澤さん） ----
+  // 2本指スクロール（マウスはホイール、Shift＋ホイールで横）で窓を動かし、ピンチ（マウスは ⌘＋ホイール）で 25%〜200% に拡大縮小する。
+  // ボックスの位置は変えないので ⌘Z の履歴には入らない。⌂ で左上・100% に戻る。
+  // 動ける範囲は「書いた物（と左上の原点）を囲む範囲＋窓1枚分」まで。書いた物が少しでも窓に残るので、見失わない
+  const ZMIN = .25, ZMAX = 2, homeBtn = $('home');
+  function setView() {
+    world.style.transform = `translate(${view.x}px, ${view.y}px) scale(${view.z})`;
+    homeBtn.textContent = '⌂ ' + Math.round(view.z * 100) + '%';
+    try { localStorage.setItem(VIEW, JSON.stringify(view)); } catch (e) {}
+  }
+  function clampView() {
+    const els = [...world.querySelectorAll('.box')];
+    const l = Math.min(0, ...els.map(x => x.offsetLeft)), t = Math.min(0, ...els.map(x => x.offsetTop));
+    const r = Math.max(0, ...els.map(x => x.offsetLeft + x.offsetWidth)), b = Math.max(0, ...els.map(x => x.offsetTop + x.offsetHeight));
+    const z = view.z, W = board.clientWidth / z, H = board.clientHeight / z;
+    const mx = Math.min(60, board.clientWidth / 4) / z, my = Math.min(60, board.clientHeight / 4) / z;   // 窓に残す書いた物の幅（画面で最大60px）
+    const fit = (v, lo, hi) => lo > hi ? (lo + hi) / 2 : Math.min(hi, Math.max(lo, v));
+    view.x = -fit(-view.x / z, l - W + mx, r - mx) * z;
+    view.y = -fit(-view.y / z, t - H + my, b - my) * z;
+  }
   board.addEventListener('wheel', e => {
-    if (e.ctrlKey) return;   // ピンチはブラウザに任せる
     if (e.target !== board && !e.target.closest('.box')) return;   // 道具・ボタンの上では動かさない
     e.preventDefault();
     const k = e.deltaMode === 1 ? 16 : e.deltaMode === 2 ? board.clientHeight : 1;
     let dx = e.deltaX * k, dy = e.deltaY * k;
-    if (e.shiftKey && !dx) { dx = dy; dy = 0; }
-    if (!dx && !dy) return;
-    state.boxes.forEach(b => { b.x = Math.round((b.x - dx) * 10) / 10; b.y = Math.round((b.y - dy) * 10) / 10; });
-    board.querySelectorAll('.box').forEach(el => { const b = find(el); if (b) { el.style.left = b.x + 'px'; el.style.top = b.y + 'px'; } });
-    placeTb(); save();
+    if (e.ctrlKey || e.metaKey) {
+      // ピンチはブラウザが ctrlKey つきのホイールとして送ってくる。マウスの ⌘＋ホイールは1目盛りずつ
+      const f = Math.exp(e.ctrlKey ? -Math.max(-50, Math.min(50, dy)) * .01 : -Math.sign(dy) * .15);
+      const z = Math.min(ZMAX, Math.max(ZMIN, view.z * f)); if (z === view.z) return;
+      const br = board.getBoundingClientRect(), px = e.clientX - br.left, py = e.clientY - br.top;
+      view.x = px - (px - view.x) * z / view.z; view.y = py - (py - view.y) * z / view.z; view.z = z;
+    } else {
+      if (e.shiftKey && !dx) { dx = dy; dy = 0; }
+      if (!dx && !dy) return;
+      view.x -= dx; view.y -= dy;
+    }
+    clampView(); setView(); placeTb();
   }, { passive: false });
+  homeBtn.onclick = () => { view = { x: 0, y: 0, z: 1 }; setView(); placeTb(); };
   // 道具を押しても、ボードの何もない所を押した扱い（選択が外れる）にしない
   tb.addEventListener('pointerdown', e => e.stopPropagation());
   // 道具のボタンを押しても、書き換え中の文字の選択が外れないように（色の入力欄だけは普通に開く）
@@ -707,6 +746,7 @@
   // ---- 起動 ----
   applyBg();
   state.boxes.forEach(render);
+  clampView(); setView();   // 前に覚えた窓の位置が、書いた物から離れすぎていたら引き戻す
   record();
   fgPick.value = state.fg || '#ffffff';
 })();
