@@ -25,6 +25,8 @@
     大きさは、範囲の右下のつまみ・±のどちらも、並び（間隔）ごと拡大・縮小する（2026-11-09 高見澤さん「位置関係が固定だと拡大縮小になっていない」）
     太字・下線・動きは、1つでもかかっていなければ全部にかけ、全部にかかっていれば全部から外す（2026-11-09）
   - ⌘Z で1つ戻す、⌘⇧Z（または ⌘Y）でやり直す。書き換え中の文字の中ではブラウザの普通の取り消しが効く（2026-11-09）
+  - ⌘C で選んだボックス（まとめて選んでいれば全部）を写し、⌘V で少しずらして同じボックスを出す。続けて押すとさらにずれる。
+    写したものはこのブラウザに置くので、小窓と元のページの間でも貼れる。書き換え中の文字の中は普通の文字のコピー・貼り付け（2026-11-10 高見澤さん）
   - 中身はこのブラウザ（localStorage）に残る。外には送らない
   - 道具・選んだ枠は、マウスがボードの外にある時は消える（配信に映らないように）
 -->
@@ -589,6 +591,26 @@
     const made = g.map(el => { const b = { ...find(el), id: id++ }; b.x += 20; b.y += 20; state.boxes.push(b); return render(b); });
     save(); setGroup(made);
   };
+  // ---- ⌘C／⌘V（写したボックスはこのブラウザに置くので、最前面の小窓と元のページの間でも貼れる） ----
+  const CLIP = KEY + '-clip';
+  let clipMem = null, pasteN = 0;
+  function copyBoxes(g) {
+    g.forEach(stopEdit);
+    clipMem = g.map(el => ({ ...find(el) })); pasteN = 0;
+    try { localStorage.setItem(CLIP, JSON.stringify(clipMem)); } catch (e) {}
+  }
+  function clipBoxes() {
+    try { const v = JSON.parse(localStorage.getItem(CLIP)); if (Array.isArray(v) && v.length) return v; } catch (e) {}
+    return clipMem && clipMem.length ? clipMem : null;
+  }
+  function pasteBoxes() {
+    const list = clipBoxes(); if (!list) return;
+    if (sel) stopEdit(sel);
+    pasteN++;
+    let id = Date.now();
+    const made = list.map(src => { const b = { ...src, id: id++ }; b.x += 20 * pasteN; b.y += 20 * pasteN; state.boxes.push(b); return render(b); });
+    save(); setGroup(made);
+  }
   // 道具を押しても、ボードの何もない所を押した扱い（選択が外れる）にしない
   tb.addEventListener('pointerdown', e => e.stopPropagation());
   // 道具のボタンを押しても、書き換え中の文字の選択が外れないように（色の入力欄だけは普通に開く）
@@ -605,6 +627,13 @@
     // ⌘A で全部を選ぶ
     if ((e.metaKey || e.ctrlKey) && !editing && e.target.tagName !== 'INPUT' && e.key.toLowerCase() === 'a') {
       e.preventDefault(); setGroup([...board.querySelectorAll('.box')]); return;
+    }
+    // ⌘C で選んだボックスを写し、⌘V で同じボックスを少しずらして出す（押すたびにさらにずらす）
+    // 書き換え中の文字の中では、ブラウザの普通の文字のコピー・貼り付けに任せる（2026-11-10 高見澤さん）
+    if ((e.metaKey || e.ctrlKey) && !editing && e.target.tagName !== 'INPUT' && /^[cv]$/i.test(e.key)) {
+      if (e.key.toLowerCase() === 'c') { const g = group(); if (g.length) { e.preventDefault(); copyBoxes(g); } }
+      else if (clipBoxes()) { e.preventDefault(); pasteBoxes(); }
+      return;
     }
     if (!sel) return;
     if (editing) { if (e.key === 'Escape') { stopEdit(sel); } return; }
